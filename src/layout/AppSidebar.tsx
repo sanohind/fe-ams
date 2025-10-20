@@ -18,6 +18,7 @@ import {
   TableIcon,
   TaskIcon,
   UserCircleIcon,
+  TruckArrivalIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
@@ -28,6 +29,34 @@ type NavItem = {
   path?: string;
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
+
+const mainPageItems: NavItem[] =[
+  {
+    icon: <PieChartIcon />,
+    name: "Dashboard",
+    path: "/",
+  },
+  {
+    icon: <TableIcon />,
+    name: "Arrival Check",
+    path: "/arrival-check"
+  },
+  {
+    icon: <CalenderIcon />,
+    name: "Arrival Schedule",
+    path: "/arrival-schedule"
+  },
+  {
+    icon: <ListIcon />,
+    name: "Checksheet",
+    path: "/checksheet"
+  },
+  {
+    icon: <DocsIcon />,
+    name: "Level Stock",
+    path: "/level-stock"
+  }
+]
 
 const navItems: NavItem[] = [
   {
@@ -394,34 +423,97 @@ const AppSidebar: React.FC = () => {
         <Link to="/">
           {isExpanded || isHovered || isMobileOpen ? (
             <>
+              <div className="flex items-center">
+                <img
+                  className="dark:hidden"
+                  src="/images/logo/Logo-sanoh-2.png"
+                  alt="Logo"
+                  width={150}
+                  height={40}
+                />
+                <img
+                  className="hidden dark:block"
+                  src="/images/logo/Logo-sanoh-2-white.png"
+                  alt="Logo"
+                  width={150}
+                  height={40}
+                />
+              </div>
+            </>
+          ) : (
+            <> 
               <img
-                className="dark:hidden"
-                src="/images/logo/logo.svg"
+              className="dark:hidden"
+                src="/images/logo/SANOH-LITE-01.png"
                 alt="Logo"
-                width={150}
-                height={40}
+                width={30}
+                height={30}
               />
               <img
                 className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
+                src="/images/logo/SANOH-LITE-02.png"
                 alt="Logo"
-                width={150}
-                height={40}
+                width={30}
+                height={30}
               />
             </>
-          ) : (
-            <img
-              src="/images/logo/logo-icon.svg"
-              alt="Logo"
-              width={32}
-              height={32}
-            />
           )}
         </Link>
       </div>
       <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
         <nav className="mb-6">
           <div className="flex flex-col gap-4">
+            <div>
+              <h2
+                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
+                  !isExpanded && !isHovered
+                    ? "lg:justify-center"
+                    : "justify-start"
+                }`}
+              >
+                {isExpanded || isHovered || isMobileOpen ? (
+                  "Main Pages"
+                ) : (
+                  <HorizontaLDots className="size-6" />
+                )}
+              </h2>
+              <ul className="flex flex-col gap-4">
+                {mainPageItems.map((item) => (
+                  <li key={item.name}>
+                    {item.path ? (
+                      <Link
+                        to={item.path}
+                        className={`menu-item group ${
+                          isActive(item.path) ? "menu-item-active" : "menu-item-inactive"
+                        }`}
+                      >
+                        <span
+                          className={`menu-item-icon-size ${
+                            isActive(item.path)
+                              ? "menu-item-icon-active"
+                              : "menu-item-icon-inactive"
+                          }`}
+                        >
+                          {item.icon}
+                        </span>
+                        {(isExpanded || isHovered || isMobileOpen) && (
+                          <span className="menu-item-text">{item.name}</span>
+                        )}
+                      </Link>
+                    ) : (
+                      <div className="menu-item group menu-item-inactive">
+                        <span className="menu-item-icon-size menu-item-icon-inactive">
+                          {item.icon}
+                        </span>
+                        {(isExpanded || isHovered || isMobileOpen) && (
+                          <span className="menu-item-text">{item.name}</span>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
             <div>
               <h2
                 className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${

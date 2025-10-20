@@ -60,6 +60,12 @@ import { ScrollToTop } from "./components/common/ScrollToTop";
 import TaskList from "./pages/Task/TaskList";
 import Saas from "./pages/Dashboard/Saas";
 
+import MainPageDashboard from "./pages/MainPage/Dashboard";
+import ArrivalCheck from "./pages/MainPage/ArrivalCheck";
+import ArrivalSchedule from "./pages/MainPage/ArrivalSchedule";
+import CheckSheet from "./pages/MainPage/CheckSheet";
+import LevelStock from "./pages/MainPage/LevelStock";
+
 export default function App() {
   return (
     <>
@@ -68,7 +74,15 @@ export default function App() {
         <Routes>
           {/* Dashboard Layout */}
           <Route element={<AppLayout />}>
-            <Route index path="/" element={<Ecommerce />} />
+            {/* Main page */}
+            <Route index path="/" element={<MainPageDashboard />} />
+            <Route path="/arrival-check" element={<ArrivalCheck />} />
+            <Route path="/arrival-schedule" element={<ArrivalSchedule />} />
+            <Route path="/checksheet" element={<CheckSheet />} />
+            <Route path="/level-stock" element={<LevelStock />} />
+
+            {/* Dashboard */}
+            <Route index path="/dashboard" element={<Ecommerce />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/marketing" element={<Marketing />} />
             <Route path="/crm" element={<Crm />} />
