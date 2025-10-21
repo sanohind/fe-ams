@@ -9,7 +9,7 @@ export interface ColumnConfig {
   key: string;
   label: string;
   sortable?: boolean;
-  render?: (value: any, row: any) => React.ReactNode;
+  render?: (value: any, row: any, rowIndex?: number) => React.ReactNode;
 }
 
 interface DataTableOneProps {
@@ -197,7 +197,7 @@ export default function DataTableOne({ data, columns, title, defaultItemsPerPage
                 <TableRow key={i}>
                   {columns.map((column) => (
                     <TableCell key={column.key} className="px-4 py-3 border border-gray-100 dark:border-white/[0.05] whitespace-nowrap">
-                      {column.render ? column.render(getNestedValue(item, column.key), item) : <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">{getNestedValue(item, column.key)}</span>}
+                      {column.render ? column.render(getNestedValue(item, column.key), item, startIndex + i) : <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">{getNestedValue(item, column.key)}</span>}
                     </TableCell>
                   ))}
                 </TableRow>

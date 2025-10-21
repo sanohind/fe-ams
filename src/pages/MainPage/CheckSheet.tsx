@@ -3,7 +3,6 @@ import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import DataTableOne from "../../components/tables/DataTables/TableOne/DataTableOne";
 import { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
-import DatePicker from "../../components/form/date-picker";
 
 // Interface untuk data
 interface CheckSheetData {
@@ -113,7 +112,7 @@ export default function CheckSheet() {
       key: "check_labelPort",
       label: "Label Port",
       sortable: true,
-      render: (value: boolean, row: CheckSheetData, rowIndex: number) => (
+      render: (value: boolean, row: CheckSheetData, rowIndex: number = 0) => (
         <div className="flex justify-center">
           <input
             type="checkbox"
@@ -128,7 +127,7 @@ export default function CheckSheet() {
       key: "check_COA_MSDS",
       label: "COA/MSDS",
       sortable: true,
-      render: (value: boolean, row: CheckSheetData, rowIndex: number) => (
+      render: (value: boolean, row: CheckSheetData, rowIndex: number = 0) => (
         <div className="flex justify-center">
           <input
             type="checkbox"
@@ -143,7 +142,7 @@ export default function CheckSheet() {
       key: "check_packing_label",
       label: "Packing Label",
       sortable: true,
-      render: (value: boolean, row: CheckSheetData, rowIndex: number) => (
+      render: (value: boolean, row: CheckSheetData, rowIndex: number = 0) => (
         <div className="flex justify-center">
           <input
             type="checkbox"

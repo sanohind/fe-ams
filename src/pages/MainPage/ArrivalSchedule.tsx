@@ -1,9 +1,56 @@
+import { useState } from "react";
+import { FileText } from "lucide-react";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import DataTableOne, { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
+import DNListPopup from "../../components/popups/DNListPopup";
 
-// Data untuk dashboard
-const dashboardData = [
+// Helper function to calculate arrival status
+const calculateArrivalStatus = (schedule: string, securityTimeIn: string): string => {
+  if (securityTimeIn === "-" || !securityTimeIn) return "-";
+  
+  const [scheduleHour, scheduleMin] = schedule.split(":").map(Number);
+  const [actualHour, actualMin] = securityTimeIn.split(":").map(Number);
+  
+  const scheduleInMinutes = scheduleHour * 60 + scheduleMin;
+  const actualInMinutes = actualHour * 60 + actualMin;
+  
+  const diffInMinutes = actualInMinutes - scheduleInMinutes;
+  
+  if (diffInMinutes < -5) return "Advance";
+  if (diffInMinutes > 5) return "Delay";
+  return "Ontime";
+};
+
+// Interface untuk DN Item
+interface DNItem {
+  dnNumber: string;
+  quantityDN: number;
+  quantityActual: number;
+  status?: string;
+}
+
+// Interface untuk data dashboard dengan multiple DN
+interface DashboardDataItem {
+  no: number;
+  supplier: string;
+  schedule: string;
+  dock: string;
+  platNumber: string;
+  securityTimeIn: string;
+  securityTimeOut: string;
+  securityDuration: string;
+  warehouseTimeIn: string;
+  warehouseTimeOut: string;
+  warehouseDuration: string;
+  dnList: DNItem[]; // Array of DN items
+  arrivalStatus: string;
+  scanStatus: string;
+  pic: string;
+}
+
+// Data untuk dashboard dengan multiple DN
+const dashboardData: DashboardDataItem[] = [
   {
     no: 1,
     supplier: "PT Mitra Jaya",
@@ -16,10 +63,13 @@ const dashboardData = [
     warehouseTimeIn: "08:10",
     warehouseTimeOut: "10:15",
     warehouseDuration: "2h 5m",
-    dnNumber: "DN-2025-001",
-    quantityDN: 500,
-    quantityActual: 500,
-    status: "Completed",
+    dnList: [
+      { dnNumber: "DN-2025-001", quantityDN: 500, quantityActual: 500, status: "Completed" },
+      { dnNumber: "DN-2025-002", quantityDN: 300, quantityActual: 300, status: "Completed" },
+      { dnNumber: "DN-2025-003", quantityDN: 200, quantityActual: 195, status: "Completed" }
+    ],
+    arrivalStatus: calculateArrivalStatus("08:00", "07:55"),
+    scanStatus: "Completed",
     pic: "John Doe"
   },
   {
@@ -34,10 +84,11 @@ const dashboardData = [
     warehouseTimeIn: "09:05",
     warehouseTimeOut: "11:10",
     warehouseDuration: "2h 5m",
-    dnNumber: "DN-2025-002",
-    quantityDN: 300,
-    quantityActual: 295,
-    status: "Completed",
+    dnList: [
+      { dnNumber: "DN-2025-004", quantityDN: 300, quantityActual: 295, status: "Completed" }
+    ],
+    arrivalStatus: calculateArrivalStatus("09:00", "08:50"),
+    scanStatus: "Completed",
     pic: "Jane Smith"
   },
   {
@@ -52,10 +103,12 @@ const dashboardData = [
     warehouseTimeIn: "10:00",
     warehouseTimeOut: "-",
     warehouseDuration: "-",
-    dnNumber: "DN-2025-003",
-    quantityDN: 450,
-    quantityActual: 0,
-    status: "In Progress",
+    dnList: [
+      { dnNumber: "DN-2025-005", quantityDN: 450, quantityActual: 0, status: "In Progress" },
+      { dnNumber: "DN-2025-006", quantityDN: 250, quantityActual: 0, status: "Pending" }
+    ],
+    arrivalStatus: calculateArrivalStatus("10:00", "09:45"),
+    scanStatus: "In Progress",
     pic: "Mike Johnson"
   },
   {
@@ -70,10 +123,11 @@ const dashboardData = [
     warehouseTimeIn: "11:10",
     warehouseTimeOut: "13:30",
     warehouseDuration: "2h 20m",
-    dnNumber: "DN-2025-004",
-    quantityDN: 600,
-    quantityActual: 600,
-    status: "Completed",
+    dnList: [
+      { dnNumber: "DN-2025-007", quantityDN: 600, quantityActual: 600, status: "Completed" }
+    ],
+    arrivalStatus: calculateArrivalStatus("11:00", "10:55"),
+    scanStatus: "Completed",
     pic: "Sarah Lee"
   },
   {
@@ -88,147 +142,235 @@ const dashboardData = [
     warehouseTimeIn: "13:05",
     warehouseTimeOut: "15:20",
     warehouseDuration: "2h 15m",
-    dnNumber: "DN-2025-005",
-    quantityDN: 350,
-    quantityActual: 350,
-    status: "Completed",
+    dnList: [
+      { dnNumber: "DN-2025-008", quantityDN: 150, quantityActual: 150, status: "Completed" },
+      { dnNumber: "DN-2025-009", quantityDN: 100, quantityActual: 100, status: "Completed" },
+      { dnNumber: "DN-2025-010", quantityDN: 100, quantityActual: 100, status: "Completed" }
+    ],
+    arrivalStatus: calculateArrivalStatus("13:00", "12:50"),
+    scanStatus: "Completed",
     pic: "David Chen"
   }
 ];
 
-// Konfigurasi kolom
-const columns: ColumnConfig[] = [
-  {
-    key: "no",
-    label: "No",
-    sortable: true,
-  },
-  {
-    key: "supplier",
-    label: "Supplier",
-    sortable: true,
-  },
-  {
-    key: "schedule",
-    label: "Schedule",
-    sortable: true,
-  },
-  {
-    key: "dock",
-    label: "Dock",
-    sortable: true,
-  },
-  {
-    key: "platNumber",
-    label: "Plat Number",
-    sortable: true,
-  },
-  {
-    key: "securityTimeIn",
-    label: "Security Time (In)",
-    sortable: false,
-  },
-  {
-    key: "securityTimeOut",
-    label: "Security Time (Out)",
-    sortable: false,
-  },
-  {
-    key: "securityDuration",
-    label: "Duration",
-    sortable: false,
-  },
-  {
-    key: "warehouseTimeIn",
-    label: "Warehouse Time (In)",
-    sortable: false,
-  },
-  {
-    key: "warehouseTimeOut",
-    label: "Warehouse Time (Out)",
-    sortable: false,
-  },
-  {
-    key: "warehouseDuration",
-    label: "Duration",
-    sortable: false,
-  },
-  {
-    key: "dnNumber",
-    label: "DN Number",
-    sortable: true,
-  },
-  {
-    key: "quantityDN",
-    label: "Quantity (DN)",
-    sortable: true,
-  },
-  {
-    key: "quantityActual",
-    label: "Quantity (Actual)",
-    sortable: true,
-  },
-  {
-    key: "status",
-    label: "Status",
-    sortable: true,
-    render: (value) => {
-      const statusColors: Record<string, string> = {
-        "Completed": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-        "In Progress": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-        "Pending": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-      };
-      
-      return (
-        <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors[value] || "bg-gray-100 text-gray-800"}`}>
-          {value}
-        </span>
-      );
-    }
-  },
-  {
-    key: "pic",
-    label: "PIC",
-    sortable: true,
-  },
-];
+export default function Dashboard() {
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [selectedDNData, setSelectedDNData] = useState<{
+    dnList: DNItem[];
+    supplier: string;
+    platNumber: string;
+  } | null>(null);
 
-export default function ArrivalSchedule() {
+  const handleViewDNList = (item: DashboardDataItem) => {
+    setSelectedDNData({
+      dnList: item.dnList,
+      supplier: item.supplier,
+      platNumber: item.platNumber
+    });
+    setIsPopupOpen(true);
+  };
+
+  // Konfigurasi kolom
+  const columns: ColumnConfig[] = [
+    {
+      key: "no",
+      label: "No",
+      sortable: true,
+    },
+    {
+      key: "supplier",
+      label: "Supplier",
+      sortable: true,
+    },
+    {
+      key: "schedule",
+      label: "Schedule",
+      sortable: true,
+    },
+    {
+      key: "dock",
+      label: "Dock",
+      sortable: true,
+    },
+    {
+      key: "platNumber",
+      label: "Plat Number",
+      sortable: true,
+    },
+    {
+      key: "securityTimeIn",
+      label: "Security Time (In)",
+      sortable: false,
+    },
+    {
+      key: "securityTimeOut",
+      label: "Security Time (Out)",
+      sortable: false,
+    },
+    {
+      key: "securityDuration",
+      label: "Duration",
+      sortable: false,
+    },
+    {
+      key: "warehouseTimeIn",
+      label: "Warehouse Time (In)",
+      sortable: false,
+    },
+    {
+      key: "warehouseTimeOut",
+      label: "Warehouse Time (Out)",
+      sortable: false,
+    },
+    {
+      key: "warehouseDuration",
+      label: "Duration",
+      sortable: false,
+    },
+    {
+      key: "arrivalStatus",
+      label: "Arrival Status",
+      sortable: true,
+      render: (value) => {
+        const statusColors: Record<string, string> = {
+          "Advance": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+          "Ontime": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+          "Delay": "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+        };
+        
+        if (value === "-") return <span className="text-gray-500">-</span>;
+        
+        return (
+          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors[value] || "bg-gray-100 text-gray-800"}`}>
+            {value}
+          </span>
+        );
+      }
+    },
+    {
+      key: "dnList",
+      label: "DN Number",
+      sortable: false,
+      render: (value, row) => {
+        const dnList = value as DNItem[];
+        const totalDN = dnList.length;
+
+        return (
+          <button
+            onClick={() => handleViewDNList(row as DashboardDataItem)}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+          >
+            <FileText className="w-4 h-4" />
+            <span>{totalDN} DN(s)</span>
+          </button>
+        );
+      }
+    },
+    {
+      key: "dnList",
+      label: "Quantity (DN)",
+      sortable: true,
+      render: (value) => {
+        const dnList = value as DNItem[];
+        const totalQtyDN = dnList.reduce((sum, dn) => sum + dn.quantityDN, 0);
+        return <span className=" dark:text-white">{totalQtyDN.toLocaleString()}</span>;
+      }
+    },
+    {
+      key: "dnList",
+      label: "Quantity (Actual)",
+      sortable: true,
+      render: (value) => {
+        const dnList = value as DNItem[];
+        const totalQtyDN = dnList.reduce((sum, dn) => sum + dn.quantityDN, 0);
+        const totalQtyActual = dnList.reduce((sum, dn) => sum + dn.quantityActual, 0);
+        
+        const isMatch = totalQtyDN === totalQtyActual;
+        
+        return (
+          <span className={`font-medium ${
+            isMatch 
+              ? "text-green-600 dark:text-green-400" 
+              : "text-red-600 dark:text-red-400"
+          }`}>
+            {totalQtyActual.toLocaleString()}
+          </span>
+        );
+      }
+    },
+    {
+      key: "scanStatus",
+      label: "Scan Status",
+      sortable: true,
+      render: (value) => {
+        const statusColors: Record<string, string> = {
+          "Completed": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+          "In Progress": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+          "Pending": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+        };
+        
+        return (
+          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors[value] || "bg-gray-100 text-gray-800"}`}>
+            {value}
+          </span>
+        );
+      }
+    },
+    {
+      key: "pic",
+      label: "PIC",
+      sortable: true,
+    },
+  ];
+
   return (
-    <div className="overflow-x-hidden">
+    <div className="overflow-x-hidden space-y-5 sm:space-y-6">
       <PageMeta
-        title="Arrival Schedule | SPHERE by SANOH Indonesia"
-        description="This is React.js Data Tables Arrival Schedule page for SPHERE by SANOH Indonesia"
+        title="Dashboard | SPHERE by SANOH Indonesia"
+        description="This is React.js Data Tables Dashboard page for SPHERE by SANOH Indonesia"
       />
-      <PageBreadcrumb pageTitle="Arrival Schedule" />
-      <div className="space-y-5 sm:space-y-6 mb-5">
-            <DataTableOne 
-            title="Regular Arrival"
-            data={dashboardData}
-            columns={columns}
-            defaultItemsPerPage={10}
-            itemsPerPageOptions={[5, 10, 15, 20]}
-            defaultSortKey="no"
-            defaultSortOrder="asc"
-            searchable={true}
-            searchPlaceholder="Search suppliers, DN numbers..."
-            datePicker={true}
-            />
-        </div>
-        <div className="space-y-5 sm:space-y-6">
-            <DataTableOne 
-            title="Additional Arrival"
-            data={dashboardData}
-            columns={columns}
-            defaultItemsPerPage={10}
-            itemsPerPageOptions={[5, 10, 15, 20]}
-            defaultSortKey="no"
-            defaultSortOrder="asc"
-            searchable={true}
-            searchPlaceholder="Search suppliers, DN numbers..."
-            datePicker={true}
-            />
-        </div>  
+      <PageBreadcrumb pageTitle="Dashboard" />
+      
+      <div className="space-y-5 sm:space-y-6">
+        <DataTableOne 
+          title="Regular Arrival"
+          data={dashboardData}
+          columns={columns}
+          defaultItemsPerPage={10}
+          itemsPerPageOptions={[5, 10, 15, 20]}
+          defaultSortKey="no"
+          defaultSortOrder="asc"
+          searchable={true}
+          searchPlaceholder="Search suppliers, DN numbers..."
+          datePicker={true}
+        />
+      </div>
+      
+      <div className="space-y-5 sm:space-y-6">
+        <DataTableOne 
+          title="Additional Arrival"
+          data={dashboardData}
+          columns={columns}
+          defaultItemsPerPage={10}
+          itemsPerPageOptions={[5, 10, 15, 20]}
+          defaultSortKey="no"
+          defaultSortOrder="asc"
+          searchable={true}
+          searchPlaceholder="Search suppliers, DN numbers..."
+          datePicker={true}
+        />
+      </div>
+
+      {/* DN List Popup */}
+      {selectedDNData && (
+        <DNListPopup
+          isOpen={isPopupOpen}
+          onClose={() => setIsPopupOpen(false)}
+          dnList={selectedDNData.dnList}
+          supplier={selectedDNData.supplier}
+          platNumber={selectedDNData.platNumber}
+        />
+      )}
     </div>
   );
 }
