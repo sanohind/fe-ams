@@ -47,8 +47,6 @@ const getStockStatus = (
 ): { status: string; color: string } => {
   if (onhand < min_stock) {
     return { status: "Critical", color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400" };
-  } else if (onhand < safety_stock) {
-    return { status: "Low", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400" };
   } else if (onhand > max_stock) {
     return { status: "Overstock", color: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400" };
   } else {
@@ -272,24 +270,6 @@ const columns: ColumnConfig[] = [
     sortable: true,
   },
   {
-    key: "allocated",
-    label: "Allocated",
-    sortable: true,
-  },
-  {
-    key: "available",
-    label: "Available",
-    sortable: true,
-    render: (value: number) => (
-      <span className="font-bold text-blue-600">{value.toLocaleString()}</span>
-    )
-  },
-  {
-    key: "onorder",
-    label: "On Order",
-    sortable: true,
-  },
-  {
     key: "min_stock",
     label: "Min",
     sortable: true,
@@ -314,18 +294,6 @@ const columns: ColumnConfig[] = [
       </span>
     )
   },
-  {
-    key: "reorder_qty",
-    label: "Reorder Qty",
-    sortable: true,
-    render: (value: number) => (
-      value > 0 ? (
-        <span className="font-semibold text-red-600">{value.toLocaleString()}</span>
-      ) : (
-        <span className="text-gray-400">-</span>
-      )
-    )
-  }
 ];
 
 export default function LevelStock() {
@@ -345,29 +313,20 @@ export default function LevelStock() {
       <PageBreadcrumb pageTitle="Level Stock" />
       
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-[#171A2A] rounded-lg p-4 border border-red-800">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="bg-[#171A2A] rounded-lg p-4 border-b-[2px] border-red-800">
           <div className="text-white text-sm font-medium">Critical Parts</div>
           <div className="text-3xl font-bold text-white/80 mt-1">{criticalParts}</div>
-          <div className="text-xs text-white/80 mt-1">Below Min Stock</div>
         </div>
         
-        <div className="bg-[#171A2A] rounded-lg p-4 border border-yellow-800">
-          <div className="text-white text-sm font-medium">Low Stock Parts</div>
-          <div className="text-3xl font-bold text-white/80 mt-1">{lowParts}</div>
-          <div className="text-xs text-white/80 mt-1">Below Safety Stock</div>
-        </div>
-        
-        <div className="bg-[#171A2A] rounded-lg p-4 border border-orange-800">
+        <div className="bg-[#171A2A] rounded-lg p-4 border-b-[2px] border-yellow-800">
           <div className="text-white text-sm font-medium">Overstock Parts</div>
           <div className="text-3xl font-bold text-white/80 mt-1">{overstockParts}</div>
-          <div className="text-xs text-white/80 mt-1">Above Max Stock</div>
         </div>
         
-        <div className="bg-[#171A2A] rounded-lg p-4 border border-green-800">
+        <div className="bg-[#171A2A] rounded-lg p-4 border-b-[2px] border-green-600">
           <div className="text-white text-sm font-medium">Normal Parts</div>
           <div className="text-3xl font-bold text-white/80 mt-1">{normalParts}</div>
-          <div className="text-xs text-white/80 mt-1">Optimal Stock Level</div>
         </div>
       </div>
 

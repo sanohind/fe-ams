@@ -65,6 +65,10 @@ import ArrivalCheck from "./pages/MainPage/ArrivalCheck";
 import ArrivalSchedule from "./pages/MainPage/ArrivalSchedule";
 import CheckSheet from "./pages/MainPage/CheckSheet";
 import LevelStock from "./pages/MainPage/LevelStock";
+import ArrivalManage from "./pages/MainPage/ArrivalManage";
+import AddArrival from "./pages/MainPage/AddArrival";
+import ItemScan from "./pages/MainPage/ItemScan";
+import IconGalery from "./pages/MainPage/IconGalery";
 
 export default function App() {
   return (
@@ -80,6 +84,10 @@ export default function App() {
             <Route path="/arrival-schedule" element={<ArrivalSchedule />} />
             <Route path="/checksheet" element={<CheckSheet />} />
             <Route path="/level-stock" element={<LevelStock />} />
+            <Route path="/arrival-manage" element={<ArrivalManage />} />
+            <Route path="/add-arrival" element={<AddArrival />} />
+            <Route path="/item-scan" element={<ItemScan />} />
+            <Route path="/icon-galery" element={<IconGalery />} />
 
             {/* Dashboard */}
             <Route index path="/dashboard" element={<Ecommerce />} />
@@ -151,10 +159,7 @@ export default function App() {
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route
-            path="/two-step-verification"
-            element={<TwoStepVerification />}
-          />
+          <Route path="/two-step-verification" element={<TwoStepVerification />} />
 
           {/* Fallback Route */}
           <Route path="*" element={<NotFound />} />

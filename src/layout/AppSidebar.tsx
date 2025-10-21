@@ -19,9 +19,11 @@ import {
   TaskIcon,
   UserCircleIcon,
   TruckArrivalIcon,
+  BoxIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
+import { BoltIcon } from "lucide-react";
 
 type NavItem = {
   name: string;
@@ -55,6 +57,21 @@ const mainPageItems: NavItem[] =[
     icon: <DocsIcon />,
     name: "Level Stock",
     path: "/level-stock"
+  },
+  {
+    icon: <BoltIcon />,
+    name: "Arrival Manage",
+    path: "/arrival-manage"
+  },
+  {
+    icon: <BoxIcon />,
+    name: "Item Scan",
+    path: "/item-scan"
+  },
+  {
+    icon: <PlugInIcon />,
+    name: "Icon Galery",
+    path: "/icon-galery"
   }
 ]
 
