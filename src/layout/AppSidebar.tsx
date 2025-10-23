@@ -18,7 +18,6 @@ import {
   TableIcon,
   TaskIcon,
   UserCircleIcon,
-  TruckArrivalIcon,
   BoxIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
