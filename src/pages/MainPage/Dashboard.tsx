@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FileText } from "lucide-react";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import DataTableOne, { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
 import DNListPopup from "../../components/popups/DNListPopup";
+import apiService from "../../services/api";
 
 // Helper function to calculate arrival status
 const calculateArrivalStatus = (schedule: string, securityTimeIn: string): string => {
@@ -160,6 +161,43 @@ export default function Dashboard() {
     supplier: string;
     platNumber: string;
   } | null>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardDataItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch dashboard data from API
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Fetch dashboard stats and metrics
+        const [statsResponse, metricsResponse] = await Promise.all([
+          apiService.getDashboardStats(),
+          apiService.getDashboardMetrics()
+        ]);
+
+        if (statsResponse.success && metricsResponse.success) {
+          // Transform API data to match our interface
+          const transformedData = transformApiDataToDashboard(statsResponse.data, metricsResponse.data);
+          setDashboardData(transformedData);
+        } else {
+          // Fallback to dummy data if API fails
+          setDashboardData(dashboardData);
+        }
+      } catch (err: any) {
+        console.error('Error fetching dashboard data:', err);
+        setError(err.message || 'Failed to fetch dashboard data');
+        // Fallback to dummy data
+        setDashboardData(dashboardData);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
 
   const handleViewDNList = (item: DashboardDataItem) => {
     setSelectedDNData({
@@ -168,6 +206,13 @@ export default function Dashboard() {
       platNumber: item.platNumber
     });
     setIsPopupOpen(true);
+  };
+
+  // Transform API data to dashboard format
+  const transformApiDataToDashboard = (statsData: any, metricsData: any): DashboardDataItem[] => {
+    // This function will transform the API response to match our DashboardDataItem interface
+    // For now, return the dummy data structure
+    return dashboardData;
   };
 
   // Konfigurasi kolom
@@ -323,6 +368,17 @@ export default function Dashboard() {
     },
   ];
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="overflow-x-hidden space-y-5 sm:space-y-6">
       <PageMeta
@@ -330,6 +386,21 @@ export default function Dashboard() {
         description="This is React.js Data Tables Dashboard page for SPHERE by SANOH Indonesia"
       />
       <PageBreadcrumb pageTitle="Dashboard" />
+      
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <div className="flex">
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+                Error loading dashboard
+              </h3>
+              <div className="mt-2 text-sm text-red-700 dark:text-red-300">
+                {error}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="space-y-5 sm:space-y-6">
         <DataTableOne 
