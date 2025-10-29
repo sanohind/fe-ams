@@ -1,6 +1,8 @@
+import { useEffect, useMemo, useState } from "react";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import DataTableOne, { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
+import apiService from "../../services/api";
 
 // Interface untuk data stock
 interface StockData {
@@ -66,176 +68,72 @@ const calculateReorderQty = (
   return 0;
 };
 
-// Data untuk level stock (sample data)
-const levelStockData: StockData[] = [
-  {
-    warehouse: "WH-01",
-    partno: "P-001-2024",
-    desc: "Brake Pad Assembly",
-    partname: "Front Brake Pad",
-    oldpartno: "P-001-2023",
-    group: "Brake System",
-    groupkey: "BRK",
-    product_type: "Automotive Parts",
-    model: "Model A",
-    customer: "Toyota",
-    onhand: 1500,
-    allocated: 300,
-    onorder: 500,
-    economicstock: 1200,
-    safety_stock: 200,
-    min_stock: 800,
-    max_stock: 2000,
-    unit: "PCS",
-    location: "A-01-01"
-  },
-  {
-    warehouse: "WH-01",
-    partno: "P-002-2024",
-    desc: "Oil Filter",
-    partname: "Engine Oil Filter",
-    oldpartno: "P-002-2023",
-    group: "Engine Parts",
-    groupkey: "ENG",
-    product_type: "Automotive Parts",
-    model: "Model B",
-    customer: "Honda",
-    onhand: 2500,
-    allocated: 500,
-    onorder: 1000,
-    economicstock: 2000,
-    safety_stock: 300,
-    min_stock: 1500,
-    max_stock: 3000,
-    unit: "PCS",
-    location: "A-02-03"
-  },
-  {
-    warehouse: "WH-02",
-    partno: "P-003-2024",
-    desc: "Air Filter",
-    partname: "Cabin Air Filter",
-    oldpartno: "P-003-2023",
-    group: "Engine Parts",
-    groupkey: "ENG",
-    product_type: "Automotive Parts",
-    model: "Model C",
-    customer: "Nissan",
-    onhand: 500,
-    allocated: 150,
-    onorder: 300,
-    economicstock: 1000,
-    safety_stock: 650,
-    min_stock: 600,
-    max_stock: 1500,
-    unit: "PCS",
-    location: "B-01-05"
-  },
-  {
-    warehouse: "WH-02",
-    partno: "P-004-2024",
-    desc: "Spark Plug",
-    partname: "Iridium Spark Plug",
-    oldpartno: "P-004-2023",
-    group: "Engine Parts",
-    groupkey: "ENG",
-    product_type: "Automotive Parts",
-    model: "Model D",
-    customer: "Mitsubishi",
-    onhand: 3000,
-    allocated: 600,
-    onorder: 1500,
-    economicstock: 2500,
-    safety_stock: 400,
-    min_stock: 2000,
-    max_stock: 4000,
-    unit: "PCS",
-    location: "B-03-02"
-  },
-  {
-    warehouse: "WH-01",
-    partno: "P-005-2024",
-    desc: "Wiper Blade",
-    partname: "Front Wiper Blade",
-    oldpartno: "P-005-2023",
-    group: "Accessories",
-    groupkey: "ACC",
-    product_type: "Automotive Parts",
-    model: "Model E",
-    customer: "Suzuki",
-    onhand: 1200,
-    allocated: 200,
-    onorder: 400,
-    economicstock: 1000,
-    safety_stock: 150,
-    min_stock: 700,
-    max_stock: 1800,
-    unit: "PCS",
-    location: "A-05-04"
-  },
-  {
-    warehouse: "WH-01",
-    partno: "P-006-2024",
-    desc: "Battery 12V",
-    partname: "Car Battery",
-    oldpartno: "P-006-2023",
-    group: "Electrical",
-    groupkey: "ELE",
-    product_type: "Automotive Parts",
-    model: "Model F",
-    customer: "Daihatsu",
-    onhand: 250,
-    allocated: 100,
-    onorder: 200,
-    economicstock: 500,
-    safety_stock: 400,
-    min_stock: 300,
-    max_stock: 800,
-    unit: "PCS",
-    location: "A-03-02"
-  },
-  {
-    warehouse: "WH-02",
-    partno: "P-007-2024",
-    desc: "Radiator Coolant",
-    partname: "Engine Coolant 5L",
-    oldpartno: "P-007-2023",
-    group: "Engine Parts",
-    groupkey: "ENG",
-    product_type: "Automotive Parts",
-    model: "Model G",
-    customer: "Toyota",
-    onhand: 4500,
-    allocated: 300,
-    onorder: 500,
-    economicstock: 2000,
-    safety_stock: 500,
-    min_stock: 1500,
-    max_stock: 3500,
-    unit: "BTL",
-    location: "B-05-01"
-  }
-];
+// Data dari ERP
+const useLevelStockData = () => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<StockData[]>([]);
 
-// Enhance data dengan kalkulasi
-const enhancedStockData: EnhancedStockData[] = levelStockData.map(item => {
-  const available = calculateAvailable(item.onhand, item.allocated);
-  const { status, color } = getStockStatus(
-    item.onhand,
-    item.min_stock,
-    item.safety_stock,
-    item.max_stock
-  );
-  const reorder_qty = calculateReorderQty(item.onhand, item.min_stock, item.max_stock);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await apiService.getStockLevels({ per_page: 100 });
+        if (res.success && res.data?.stocks) {
+          const mapped: StockData[] = res.data.stocks.map((s: any) => ({
+            warehouse: s.warehouse,
+            partno: s.part_no ?? s.partno,
+            desc: s.description ?? s.desc,
+            partname: s.part_name ?? s.partname,
+            oldpartno: s.old_part_no ?? s.oldpartno,
+            group: s.group,
+            groupkey: s.group_key ?? s.groupkey,
+            product_type: s.product_type,
+            model: s.model,
+            customer: s.customer,
+            onhand: Number(s.onhand ?? 0),
+            allocated: Number(s.allocated ?? 0),
+            onorder: Number(s.onorder ?? 0),
+            economicstock: Number(s.economic_stock ?? s.economicstock ?? 0),
+            safety_stock: Number(s.safety_stock ?? 0),
+            min_stock: Number(s.min_stock ?? 0),
+            max_stock: Number(s.max_stock ?? 0),
+            unit: s.unit,
+            location: s.location,
+          }));
+          setData(mapped);
+        } else {
+          setError(res.message || 'Failed to load stock data');
+        }
+      } catch (e: any) {
+        setError(e?.message || 'Failed to load stock data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
-  return {
-    ...item,
-    available,
-    status,
-    statusColor: color,
-    reorder_qty
-  };
-});
+  const enhanced: EnhancedStockData[] = useMemo(() => {
+    return data.map(item => {
+      const available = calculateAvailable(item.onhand, item.allocated);
+      const { status, color } = getStockStatus(
+        item.onhand,
+        item.min_stock,
+        item.safety_stock,
+        item.max_stock
+      );
+      const reorder_qty = calculateReorderQty(item.onhand, item.min_stock, item.max_stock);
+      return { ...item, available, status, statusColor: color, reorder_qty };
+    });
+  }, [data]);
+
+  return { loading, error, data: enhanced };
+};
+
+export default function LevelStock() {
+  const { loading, error, data: enhancedStockData } = useLevelStockData();
 
 // Konfigurasi kolom untuk level stock (Opsi 2: Detail View)
 const columns: ColumnConfig[] = [
@@ -296,7 +194,6 @@ const columns: ColumnConfig[] = [
   },
 ];
 
-export default function LevelStock() {
   // Hitung summary statistics
   const totalParts = enhancedStockData.length;
   const criticalParts = enhancedStockData.filter(item => item.status === "Critical").length;
@@ -311,6 +208,12 @@ export default function LevelStock() {
         description="This is React.js Data Tables Dashboard page for SPHERE by SANOH Indonesia"
       />
       <PageBreadcrumb pageTitle="Level Stock" />
+      {loading && (
+        <div className="text-gray-600 dark:text-gray-300">Loading stock data...</div>
+      )}
+      {error && (
+        <div className="text-red-600 dark:text-red-400">{error}</div>
+      )}
       
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

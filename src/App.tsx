@@ -1,4 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router";
+import { AuthProvider } from "./context/AuthContext";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Ecommerce from "./pages/Dashboard/Ecommerce";
 import Stocks from "./pages/Dashboard/Stocks";
 import Crm from "./pages/Dashboard/Crm";
@@ -6,6 +8,7 @@ import Marketing from "./pages/Dashboard/Marketing";
 import Analytics from "./pages/Dashboard/Analytics";
 import SignIn from "./pages/AuthPages/SignIn";
 import SignUp from "./pages/AuthPages/SignUp";
+import SSOCallback from "./pages/AuthPages/SSOCallback";
 import NotFound from "./pages/OtherPage/NotFound";
 import UserProfiles from "./pages/UserProfiles";
 import Carousel from "./pages/UiElements/Carousel";
@@ -72,21 +75,53 @@ import IconGalery from "./pages/MainPage/IconGalery";
 
 export default function App() {
   return (
-    <>
+    <AuthProvider>
       <Router>
         <ScrollToTop />
         <Routes>
           {/* Dashboard Layout */}
           <Route element={<AppLayout />}>
-            {/* Main page */}
-            <Route index path="/" element={<MainPageDashboard />} />
-            <Route path="/arrival-check" element={<ArrivalCheck />} />
-            <Route path="/arrival-schedule" element={<ArrivalSchedule />} />
-            <Route path="/checksheet" element={<CheckSheet />} />
-            <Route path="/level-stock" element={<LevelStock />} />
-            <Route path="/arrival-manage" element={<ArrivalManage />} />
-            <Route path="/add-arrival" element={<AddArrival />} />
-            <Route path="/item-scan" element={<ItemScan />} />
+            {/* Main page - Protected routes */}
+            <Route index path="/" element={
+              <ProtectedRoute requiredRoles={['admin-warehouse', 'superadmin', 'operator-warehouse']}>
+                <MainPageDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/arrival-check" element={
+              <ProtectedRoute requiredRoles={['operator-warehouse', 'superadmin']}>
+                <ArrivalCheck />
+              </ProtectedRoute>
+            } />
+            <Route path="/arrival-schedule" element={
+              <ProtectedRoute requiredRoles={['admin-warehouse', 'operator-warehouse', 'superadmin']}>
+                <ArrivalSchedule />
+              </ProtectedRoute>
+            } />
+            <Route path="/checksheet" element={
+              <ProtectedRoute requiredRoles={['operator-warehouse', 'superadmin']}>
+                <CheckSheet />
+              </ProtectedRoute>
+            } />
+            <Route path="/level-stock" element={
+              <ProtectedRoute requiredRoles={['admin-warehouse', 'superadmin']}>
+                <LevelStock />
+              </ProtectedRoute>
+            } />
+            <Route path="/arrival-manage" element={
+              <ProtectedRoute requiredRoles={['admin-warehouse', 'superadmin']}>
+                <ArrivalManage />
+              </ProtectedRoute>
+            } />
+            <Route path="/add-arrival" element={
+              <ProtectedRoute requiredRoles={['admin-warehouse', 'superadmin']}>
+                <AddArrival />
+              </ProtectedRoute>
+            } />
+            <Route path="/item-scan" element={
+              <ProtectedRoute requiredRoles={['operator-warehouse', 'superadmin']}>
+                <ItemScan />
+              </ProtectedRoute>
+            } />
             <Route path="/icon-galery" element={<IconGalery />} />
 
             {/* Dashboard */}
@@ -160,6 +195,9 @@ export default function App() {
           <Route path="/signup" element={<SignUp />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/two-step-verification" element={<TwoStepVerification />} />
+          
+          {/* SSO Callback */}
+          <Route path="/sso/callback" element={<SSOCallback />} />
 
           {/* Fallback Route */}
           <Route path="*" element={<NotFound />} />
@@ -170,6 +208,6 @@ export default function App() {
           <Route path="/coming-soon" element={<ComingSoon />} />
         </Routes>
       </Router>
-    </>
+    </AuthProvider>
   );
 }
