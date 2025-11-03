@@ -47,7 +47,13 @@ interface DashboardDataItem {
   dnList: DNItem[]; // Array of DN items
   arrivalStatus: string;
   scanStatus: string;
+  labelPart: string | null;
+  coaMsds: string | null;
+  packing: string | null;
   pic: string;
+  groupKey?: string;
+  quantity_dn?: number;
+  quantity_actual?: number;
 }
 
 // Data untuk dashboard dengan multiple DN
@@ -161,7 +167,8 @@ export default function Dashboard() {
     supplier: string;
     platNumber: string;
   } | null>(null);
-  const [dashboardData, setDashboardData] = useState<DashboardDataItem[]>([]);
+  const [regularData, setRegularData] = useState<DashboardDataItem[]>([]);
+  const [additionalData, setAdditionalData] = useState<DashboardDataItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -172,25 +179,21 @@ export default function Dashboard() {
         setLoading(true);
         setError(null);
         
-        // Fetch dashboard stats and metrics
-        const [statsResponse, metricsResponse] = await Promise.all([
-          apiService.getDashboardStats(),
-          apiService.getDashboardMetrics()
-        ]);
+        // Fetch dashboard data for today
+        const response = await apiService.getDashboardStats();
 
-        if (statsResponse.success && metricsResponse.success) {
+        if (response.success && response.data) {
           // Transform API data to match our interface
-          const transformedData = transformApiDataToDashboard(statsResponse.data, metricsResponse.data);
-          setDashboardData(transformedData);
+          const regular = transformApiDataToDashboard(response.data.regular_arrivals || []);
+          const additional = transformApiDataToDashboard(response.data.additional_arrivals || []);
+          setRegularData(regular);
+          setAdditionalData(additional);
         } else {
-          // Fallback to dummy data if API fails
-          setDashboardData(dashboardData);
+          setError(response.message || 'Failed to fetch dashboard data');
         }
       } catch (err: any) {
         console.error('Error fetching dashboard data:', err);
         setError(err.message || 'Failed to fetch dashboard data');
-        // Fallback to dummy data
-        setDashboardData(dashboardData);
       } finally {
         setLoading(false);
       }
@@ -199,20 +202,81 @@ export default function Dashboard() {
     fetchDashboardData();
   }, []);
 
-  const handleViewDNList = (item: DashboardDataItem) => {
-    setSelectedDNData({
-      dnList: item.dnList,
-      supplier: item.supplier,
-      platNumber: item.platNumber
-    });
-    setIsPopupOpen(true);
+  const handleViewDNList = async (item: DashboardDataItem) => {
+    // Fetch DN details from API if group_key is available
+    if (item.groupKey) {
+      try {
+        const response = await apiService.getDashboardDnDetails({ 
+          group_key: item.groupKey,
+          date: new Date().toISOString().split('T')[0]
+        });
+        
+        if (response.success && response.data) {
+          const dnList = (response.data.dn_details || []).map((dn: any) => ({
+            dnNumber: dn.dn_number,
+            quantityDN: dn.quantity_dn || 0,
+            quantityActual: dn.quantity_actual || 0,
+            status: dn.scan_status || 'Pending',
+          }));
+          
+          setSelectedDNData({
+            dnList: dnList,
+            supplier: item.supplier,
+            platNumber: item.platNumber
+          });
+          setIsPopupOpen(true);
+        }
+      } catch (err) {
+        console.error('Error fetching DN details:', err);
+        // Fallback to local data
+        setSelectedDNData({
+          dnList: item.dnList,
+          supplier: item.supplier,
+          platNumber: item.platNumber
+        });
+        setIsPopupOpen(true);
+      }
+    } else {
+      // Use local data
+      setSelectedDNData({
+        dnList: item.dnList,
+        supplier: item.supplier,
+        platNumber: item.platNumber
+      });
+      setIsPopupOpen(true);
+    }
   };
 
   // Transform API data to dashboard format
-  const transformApiDataToDashboard = (statsData: any, metricsData: any): DashboardDataItem[] => {
-    // This function will transform the API response to match our DashboardDataItem interface
-    // For now, return the dummy data structure
-    return dashboardData;
+  const transformApiDataToDashboard = (apiData: any[]): DashboardDataItem[] => {
+    return apiData.map((item, index) => ({
+      no: index + 1,
+      supplier: item.supplier_name || item.bp_code || '-',
+      schedule: item.schedule || '-',
+      dock: item.dock || '-',
+      platNumber: item.vehicle_plate || '-',
+      securityTimeIn: item.security_time_in || '-',
+      securityTimeOut: item.security_time_out || '-',
+      securityDuration: item.security_duration || '-',
+      warehouseTimeIn: item.warehouse_time_in || '-',
+      warehouseTimeOut: item.warehouse_time_out || '-',
+      warehouseDuration: item.warehouse_duration || '-',
+      dnList: (item.dn_list || []).map((dn: any) => ({
+        dnNumber: dn.dn_number || dn.dnNumber || '-',
+        quantityDN: Number(dn.quantity_dn || dn.quantityDN || 0),
+        quantityActual: Number(dn.quantity_actual || dn.quantityActual || 0),
+        status: dn.scan_status || dn.status || 'Pending',
+      })),
+      arrivalStatus: item.arrival_status || '-',
+      scanStatus: item.scan_status || 'Pending',
+      labelPart: item.label_part || null,
+      coaMsds: item.coa_msds || null,
+      packing: item.packing || null,
+      pic: item.pic || '-',
+      groupKey: item.group_key,
+      quantity_dn: Number(item.quantity_dn || 0),
+      quantity_actual: Number(item.quantity_actual || 0),
+    }));
   };
 
   // Konfigurasi kolom
@@ -281,12 +345,13 @@ export default function Dashboard() {
           "Advance": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
           "Ontime": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
           "Delay": "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+          "pending": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
         };
         
-        if (value === "-") return <span className="text-gray-500">-</span>;
+        if (value === "-" || !value) return <span className="text-gray-500">-</span>;
         
         return (
-          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors[value] || "bg-gray-100 text-gray-800"}`}>
+          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors[value] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"}`}>
             {value}
           </span>
         );
@@ -312,25 +377,22 @@ export default function Dashboard() {
       }
     },
     {
-      key: "dnList",
+      key: "quantity_dn",
       label: "Quantity (DN)",
       sortable: true,
-      render: (value) => {
-        const dnList = value as DNItem[];
-        const totalQtyDN = dnList.reduce((sum, dn) => sum + dn.quantityDN, 0);
-        return <span className=" dark:text-white">{totalQtyDN.toLocaleString()}</span>;
+      render: (value, row: any) => {
+        const qty = row.quantity_dn || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityDN, 0) || 0;
+        return <span className=" dark:text-white">{qty.toLocaleString()}</span>;
       }
     },
     {
-      key: "dnList",
+      key: "quantity_actual",
       label: "Quantity (Actual)",
       sortable: true,
-      render: (value) => {
-        const dnList = value as DNItem[];
-        const totalQtyDN = dnList.reduce((sum, dn) => sum + dn.quantityDN, 0);
-        const totalQtyActual = dnList.reduce((sum, dn) => sum + dn.quantityActual, 0);
-        
-        const isMatch = totalQtyDN === totalQtyActual;
+      render: (value, row: any) => {
+        const qtyDN = row.quantity_dn || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityDN, 0) || 0;
+        const qtyActual = row.quantity_actual || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityActual, 0) || 0;
+        const isMatch = qtyDN === qtyActual;
         
         return (
           <span className={`font-medium ${
@@ -338,8 +400,56 @@ export default function Dashboard() {
               ? "text-green-600 dark:text-green-400" 
               : "text-red-600 dark:text-red-400"
           }`}>
-            {totalQtyActual.toLocaleString()}
+            {qtyActual.toLocaleString()}
           </span>
+        );
+      }
+    },
+    {
+      key: "labelPart",
+      label: "Label Part",
+      sortable: false,
+      render: (value) => {
+        if (!value || value === 'PENDING') return <span className="text-gray-400">-</span>;
+        return (
+          <input
+            type="checkbox"
+            checked={value === 'OK'}
+            disabled
+            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+          />
+        );
+      }
+    },
+    {
+      key: "coaMsds",
+      label: "COA/MSDS",
+      sortable: false,
+      render: (value) => {
+        if (!value || value === 'PENDING') return <span className="text-gray-400">-</span>;
+        return (
+          <input
+            type="checkbox"
+            checked={value === 'OK'}
+            disabled
+            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+          />
+        );
+      }
+    },
+    {
+      key: "packing",
+      label: "Packing",
+      sortable: false,
+      render: (value) => {
+        if (!value || value === 'PENDING') return <span className="text-gray-400">-</span>;
+        return (
+          <input
+            type="checkbox"
+            checked={value === 'OK'}
+            disabled
+            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+          />
         );
       }
     },
@@ -355,7 +465,7 @@ export default function Dashboard() {
         };
         
         return (
-          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors[value] || "bg-gray-100 text-gray-800"}`}>
+          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors[value] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"}`}>
             {value}
           </span>
         );
@@ -405,7 +515,7 @@ export default function Dashboard() {
       <div className="space-y-5 sm:space-y-6">
         <DataTableOne 
           title="Regular Arrival"
-          data={dashboardData}
+          data={regularData}
           columns={columns}
           defaultItemsPerPage={10}
           itemsPerPageOptions={[5, 10, 15, 20]}
@@ -419,7 +529,7 @@ export default function Dashboard() {
       <div className="space-y-5 sm:space-y-6">
         <DataTableOne 
           title="Additional Arrival"
-          data={dashboardData}
+          data={additionalData}
           columns={columns}
           defaultItemsPerPage={10}
           itemsPerPageOptions={[5, 10, 15, 20]}
