@@ -1,110 +1,91 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import DataTableOne from "../../components/tables/DataTables/TableOne/DataTableOne";
 import { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
+import apiService from "../../services/api";
 
 // Interface untuk data arrival management
+type ScheduleType = 'regular' | 'additional';
+
 interface ArrivalManageData {
   id: number;
-  supplier: string;
-  schedule: string;
-  day: string;
-  dock: string;
-  frequency: "daily" | "weekly" | "biweekly" | "monthly";
-  createdDate: string;
-  lastModified: string;
+  bp_code: string;
+  arrival_type: ScheduleType;
+  arrival_time: string; // HH:mm:ss
+  departure_time?: string | null;
+  day_name: string; // monday..sunday or null when additional
+  schedule_date?: string | null; // YYYY-MM-DD for additional
+  dock?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export default function ArrivalManage() {
   const navigate = useNavigate();
-  const [data, setData] = useState<ArrivalManageData[]>([
-    {
-      id: 1,
-      supplier: "PT. Mitra Jaya",
-      schedule: "08:00",
-      day: "Monday",
-      dock: "A-01",
-      frequency: "weekly",
-      createdDate: "2025-01-15",
-      lastModified: "2025-01-20",
-    },
-    {
-      id: 2,
-      supplier: "PT. Sejahtera Abadi",
-      schedule: "09:30",
-      day: "Wednesday",
-      dock: "A-02",
-      frequency: "biweekly",
-      createdDate: "2025-01-10",
-      lastModified: "2025-01-18",
-    },
-    {
-      id: 3,
-      supplier: "PT. Cahaya Baru",
-      schedule: "10:15",
-      day: "Friday",
-      dock: "B-01",
-      frequency: "daily",
-      createdDate: "2025-01-12",
-      lastModified: "2025-01-19",
-    },
-    {
-      id: 4,
-      supplier: "CV Sumber Makmur",
-      schedule: "14:00",
-      day: "Tuesday",
-      dock: "B-02",
-      frequency: "monthly",
-      createdDate: "2025-01-08",
-      lastModified: "2025-01-17",
-    },
-    {
-      id: 5,
-      supplier: "PT Global Logistics",
-      schedule: "11:30",
-      day: "Thursday",
-      dock: "C-01",
-      frequency: "weekly",
-      createdDate: "2025-01-14",
-      lastModified: "2025-01-21",
-    },
-  ]);
+  const [data, setData] = useState<ArrivalManageData[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiService.getArrivalManageList();
+      if (res.success && res.data) {
+        setData(res.data as ArrivalManageData[]);
+      } else {
+        setError(res.message || "Failed to load schedules");
+      }
+    } catch (e: any) {
+      setError(e?.message || "Failed to load schedules");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const handleEdit = (id: number) => {
     // Handle edit functionality
     console.log("Edit arrival:", id);
   };
 
-  const handleDelete = (id: number) => {
-    // Handle delete functionality
-    setData((prevData) => prevData.filter((item) => item.id !== id));
+  const handleDelete = async (id: number) => {
+    try {
+      await apiService.deleteArrivalSchedule(id);
+      setData((prev) => prev.filter((item) => item.id !== id));
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleAddNew = () => {
     navigate("/add-arrival");
   };
 
-  const columns: ColumnConfig[] = [
+  const columns: ColumnConfig[] = useMemo(() => [
     {
       key: "id",
       label: "ID",
       sortable: true,
     },
     {
-      key: "supplier",
-      label: "Supplier",
+      key: "bp_code",
+      label: "Supplier Code",
       sortable: true,
     },
     {
-      key: "schedule",
-      label: "Schedule",
+      key: "arrival_time",
+      label: "Arrival",
       sortable: true,
     },
     {
-      key: "day",
+      key: "day_name",
       label: "Day",
       sortable: true,
     },
@@ -114,27 +95,25 @@ export default function ArrivalManage() {
       sortable: true,
     },
     {
-      key: "frequency",
-      label: "Frequency",
+      key: "arrival_type",
+      label: "Type",
       sortable: true,
       render: (value: string) => {
-        const frequencyColors: Record<string, string> = {
-          daily: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-          weekly: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-          biweekly: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-          monthly: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
+        const colors: Record<string, string> = {
+          regular: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+          additional: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
         };
-
-        return <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${frequencyColors[value] || "bg-gray-100 text-gray-800"}`}>{value.charAt(0).toUpperCase() + value.slice(1)}</span>;
+        const label = value.charAt(0).toUpperCase() + value.slice(1);
+        return <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${colors[value] || "bg-gray-100 text-gray-800"}`}>{label}</span>;
       },
     },
     {
-      key: "createdDate",
+      key: "created_at",
       label: "Created Date",
       sortable: true,
     },
     {
-      key: "lastModified",
+      key: "updated_at",
       label: "Last Modified",
       sortable: true,
     },
@@ -161,7 +140,7 @@ export default function ArrivalManage() {
         </div>
       ),
     },
-  ];
+  ], []);
 
   return (
     <>
@@ -189,6 +168,8 @@ export default function ArrivalManage() {
           searchable={true}
           searchPlaceholder="Search suppliers, schedules, docks..."
         />
+        {loading && <div className="text-sm text-gray-500">Loading...</div>}
+        {error && <div className="text-sm text-red-500">{error}</div>}
       </div>
     </>
   );

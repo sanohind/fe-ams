@@ -80,67 +80,121 @@ class ApiService {
   }
 
   // Dashboard API
-  async getDashboardStats() {
-    return this.request('/dashboard');
+  async getDashboardStats(date?: string) {
+    const qs = date ? `?date=${encodeURIComponent(date)}` : '';
+    return this.request(`/dashboard${qs}`);
+  }
+
+  async getScheduleData(date?: string) {
+    const qs = date ? `?date=${encodeURIComponent(date)}` : '';
+    return this.request(`/dashboard/schedule${qs}`);
+  }
+
+  async getDashboardDnDetails(params: { group_key: string; date: string }) {
+    const query = new URLSearchParams();
+    query.append('group_key', params.group_key);
+    query.append('date', params.date);
+    return this.request(`/dashboard/dn-details?${query.toString()}`);
   }
 
   async getDashboardMetrics() {
     return this.request('/dashboard');
   }
 
-  // Arrival Management API
-  async getArrivals(params?: {
-    status?: string;
-    date_from?: string;
-    date_to?: string;
-    page?: number;
-    per_page?: number;
-  }) {
-    const queryParams = new URLSearchParams();
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined) {
-          queryParams.append(key, value.toString());
-        }
-      });
-    }
-    
-    const queryString = queryParams.toString();
-    return this.request(`/arrivals${queryString ? `?${queryString}` : ''}`);
+  // Arrival Check API
+  async getArrivalCheckList(params?: { date?: string; type?: 'checkin'|'checkout' }) {
+    const query = new URLSearchParams();
+    if (params?.date) query.append('date', params.date);
+    if (params?.type) query.append('type', params.type);
+    const qs = query.toString();
+    return this.request(`/arrival-check${qs ? `?${qs}` : ''}`);
   }
 
-  async getArrival(id: number) {
-    return this.request(`/arrivals/${id}`);
+  async arrivalCheckin(arrival_ids: number[]) {
+    return this.request('/arrival-check/checkin', {
+      method: 'POST',
+      body: JSON.stringify({ arrival_ids }),
+    });
   }
 
-  async createArrival(data: {
+  async arrivalCheckout(arrival_ids: number[]) {
+    return this.request('/arrival-check/checkout', {
+      method: 'POST',
+      body: JSON.stringify({ arrival_ids }),
+    });
+  }
+
+  // Check Sheet API
+  async getCheckSheetList(date?: string) {
+    const qs = date ? `?date=${encodeURIComponent(date)}` : '';
+    return this.request(`/check-sheet${qs}`);
+  }
+
+  async submitCheckSheet(payload: {
+    arrival_id: number;
     dn_number: string;
-    supplier_name: string;
-    planned_delivery_time: string;
-    expected_items_count: number;
-    notes?: string;
+    check_sheet_data: {
+      label_part: 'OK'|'NOT_OK';
+      coa_msds: 'OK'|'NOT_OK';
+      packing_condition: 'OK'|'NOT_OK';
+      remarks?: string;
+    };
   }) {
-    return this.request('/arrivals', {
+    return this.request('/check-sheet/submit', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // Arrival Management API (backend: /arrival-manage)
+  async getArrivalManageList() {
+    return this.request('/arrival-manage');
+  }
+
+  async getArrivalManageSuppliers() {
+    return this.request('/arrival-manage/suppliers');
+  }
+
+  async getArrivalManageAvailableArrivals(params: { date: string; bp_code?: string }) {
+    const query = new URLSearchParams();
+    query.append('date', params.date);
+    if (params.bp_code) query.append('bp_code', params.bp_code);
+    return this.request(`/arrival-manage/available-arrivals?${query.toString()}`);
+  }
+
+  async createArrivalSchedule(data: {
+    bp_code: string;
+    day_name: 'monday'|'tuesday'|'wednesday'|'thursday'|'friday'|'saturday'|'sunday';
+    arrival_type: 'regular'|'additional';
+    arrival_time: string; // HH:mm
+    departure_time?: string; // HH:mm
+    dock?: string;
+    schedule_date?: string; // YYYY-MM-DD (required for additional)
+    arrival_ids?: number[]; // for additional duplication
+  }) {
+    return this.request('/arrival-manage', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async updateArrival(id: number, data: Partial<{
-    dn_number: string;
-    supplier_name: string;
-    planned_delivery_time: string;
-    expected_items_count: number;
-    notes: string;
+  async updateArrivalSchedule(id: number, data: Partial<{
+    bp_code: string;
+    day_name: 'monday'|'tuesday'|'wednesday'|'thursday'|'friday'|'saturday'|'sunday';
+    arrival_type: 'regular'|'additional';
+    arrival_time: string;
+    departure_time?: string;
+    dock?: string;
+    schedule_date?: string;
   }>) {
-    return this.request(`/arrivals/${id}`, {
+    return this.request(`/arrival-manage/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
-  async deleteArrival(id: number) {
-    return this.request(`/arrivals/${id}`, {
+  async deleteArrivalSchedule(id: number) {
+    return this.request(`/arrival-manage/${id}`, {
       method: 'DELETE',
     });
   }
@@ -248,7 +302,7 @@ class ApiService {
     return this.request(`/level-stock/summary${qs}`);
   }
 
-  // Arrival Schedule API
+  // Arrival Schedule API (reporting)
   async getArrivalSchedule(params?: {
     date_from?: string;
     date_to?: string;
@@ -302,15 +356,11 @@ class ApiService {
   }
 
   // Sync API
-  async triggerSync(type: 'all' | 'dn_header' | 'dn_detail' | 'business_partner' = 'all') {
-    return this.request('/sync/trigger', {
+  async manualSync(type: 'arrivals' | 'partners' | 'all' = 'all') {
+    return this.request('/sync/manual', {
       method: 'POST',
       body: JSON.stringify({ type }),
     });
-  }
-
-  async getSyncStatus() {
-    return this.request('/sync/status');
   }
 
   async getSyncLogs(params?: {

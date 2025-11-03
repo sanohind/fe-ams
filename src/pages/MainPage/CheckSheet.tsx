@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import DataTableOne from "../../components/tables/DataTables/TableOne/DataTableOne";
 import { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
+import apiService from "../../services/api";
 
 // Interface untuk data
 interface CheckSheetData {
@@ -16,60 +17,90 @@ interface CheckSheetData {
   check_labelPort: boolean;
   check_COA_MSDS: boolean;
   check_packing_label: boolean;
+  arrival_id: number;
 }
 
 export default function CheckSheet() {
-  const [data, setData] = useState<CheckSheetData[]>([
-    {
-      no: 1,
-      supplier: "PT. Mitra Jaya",
-      dn_number: "DN-2025-001",
-      schedule: "08:00",
-      driver_name: "John Doe",
-      plat_no: "B 1234 XYZ",
-      dock: "2",
-      check_labelPort: true,
-      check_COA_MSDS: true,
-      check_packing_label: false,
-    },
-    {
-      no: 2,
-      supplier: "PT. Sejahtera Abadi",
-      dn_number: "DN-2025-002",
-      schedule: "09:30",
-      driver_name: "Jane Smith",
-      plat_no: "B 5678 ABC",
-      dock: "3",
-      check_labelPort: true,
-      check_COA_MSDS: false,
-      check_packing_label: true,
-    },
-    {
-      no: 3,
-      supplier: "PT. Cahaya Baru",
-      dn_number: "DN-2025-003",
-      schedule: "10:15",
-      driver_name: "Ahmad Susanto",
-      plat_no: "B 9012 DEF",
-      dock: "1",
-      check_labelPort: false,
-      check_COA_MSDS: true,
-      check_packing_label: true,
-    },
-  ]);
+  const [data, setData] = useState<CheckSheetData[]>([]);
+  const [selectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Handler untuk toggle checkbox
-  const handleCheckboxChange = (
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await apiService.getCheckSheetList(selectedDate);
+      if (res.success) {
+        const arrivals = (res.data.arrivals || []) as any[];
+        const rows: CheckSheetData[] = [];
+        let counter = 1;
+        arrivals.forEach((g: any) => {
+          (g.rows || []).forEach((r: any) => {
+            rows.push({
+              no: counter++,
+              supplier: r.supplier_name || '-',
+              dn_number: r.dn_number,
+              schedule: r.schedule || '-',
+              driver_name: r.driver_name || '-',
+              plat_no: r.vehicle_plate || '-',
+              dock: r.dock || '-',
+              check_labelPort: r.label_part_status === 'OK',
+              check_COA_MSDS: r.coa_msds_status === 'OK',
+              check_packing_label: r.packing_condition_status === 'OK',
+              arrival_id: r.arrival_id,
+            });
+          });
+        });
+        setData(rows);
+      } else {
+        setError(res.message || 'Failed to fetch data');
+      }
+    } catch (e: any) {
+      setError(e.message || 'Failed to fetch data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate]);
+
+  // Handler untuk toggle checkbox (simpan ke backend)
+  const handleCheckboxChange = async (
     rowIndex: number,
     field: "check_labelPort" | "check_COA_MSDS" | "check_packing_label"
   ) => {
-    setData((prevData) =>
-      prevData.map((item, index) =>
-        index === rowIndex
-          ? { ...item, [field]: !item[field] }
-          : item
-      )
-    );
+    const row = data[rowIndex];
+    if (!row) return;
+
+    const nextValue = !row[field];
+    // Map field to API keys
+    const payloadMap: any = {
+      check_labelPort: 'label_part',
+      check_COA_MSDS: 'coa_msds',
+      check_packing_label: 'packing_condition',
+    };
+
+    const body = {
+      arrival_id: row.arrival_id,
+      dn_number: row.dn_number,
+      check_sheet_data: {
+        label_part: (field === 'check_labelPort' ? nextValue : row.check_labelPort) ? 'OK' : 'NOT_OK',
+        coa_msds: (field === 'check_COA_MSDS' ? nextValue : row.check_COA_MSDS) ? 'OK' : 'NOT_OK',
+        packing_condition: (field === 'check_packing_label' ? nextValue : row.check_packing_label) ? 'OK' : 'NOT_OK',
+      },
+    } as const;
+
+    try {
+      await apiService.submitCheckSheet(body as any);
+      // Update UI state
+      setData((prev) => prev.map((item, idx) => idx === rowIndex ? { ...item, [field]: nextValue } : item));
+    } catch (e) {
+      // ignore for now
+    }
   };
 
   const columns: ColumnConfig[] = [
@@ -158,8 +189,8 @@ export default function CheckSheet() {
   return (
     <>
       <PageMeta
-        title="Check Sheet | TailAdmin - Next.js Admin Dashboard Template"
-        description="This is React.js Data Tables Dashboard page for TailAdmin - React.js Tailwind CSS Admin Dashboard Template"
+        title="Check Sheet | SPHERE by SANOH Indonesia"
+        description="This is React.js Check Sheet page for SPHERE by SANOH Indonesia"
       />
       <PageBreadcrumb pageTitle="Check Sheet" />
       <div className="space-y-5 sm:space-y-6">
