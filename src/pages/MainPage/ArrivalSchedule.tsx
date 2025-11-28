@@ -1,10 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FileText } from "lucide-react";
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
+import { EventInput } from "@fullcalendar/core";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import DataTableOne, { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
 import DNListPopup from "../../components/popups/DNListPopup";
 import DatePicker from "../../components/form/date-picker";
+import { SkeletonDataTable } from "../../components/ui/skeleton/Skeleton";
 import apiService from "../../services/api";
 
 // Interface untuk DN Item
@@ -31,6 +37,7 @@ interface DashboardDataItem {
   dnList: DNItem[]; // Array of DN items
   arrivalStatus: string;
   scanStatus: string;
+  dnStatus: string; // New field for DN completeness status
   labelPart: string | null;
   coaMsds: string | null;
   packing: string | null;
@@ -38,7 +45,109 @@ interface DashboardDataItem {
   groupKey?: string;
   quantity_dn?: number;
   quantity_actual?: number;
+  expectedDnCount?: number; // Total DN expected for this schedule
+  deliveredDnCount?: number; // DN count that has been delivered
 }
+
+// Interface untuk Arrival Schedule dari API
+interface ArrivalScheduleData {
+  id: number;
+  bp_code: string;
+  day_name: string;
+  arrival_type: 'regular' | 'additional';
+  schedule_date: string | null;
+  arrival_time: string;
+  departure_time: string | null;
+  dock: string | null;
+  created_by: number | null;
+  updated_by: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Interface untuk Calendar Event
+interface CalendarEvent extends EventInput {
+  extendedProps: {
+    arrivalType: 'regular' | 'additional';
+    bpCode: string;
+    dock: string | null;
+  };
+}
+
+const normalizeArrivalStatus = (status?: string) =>
+  (status || "").toLowerCase().replace(/[\s-]+/g, "_");
+
+const formatFallbackLabel = (status: string) =>
+  status
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const parseDurationToMinutes = (value?: string | number | null): number | null => {
+  if (value === null || value === undefined) return null;
+
+  const ensureMinutes = (minutes: number) =>
+    Number.isNaN(minutes) ? null : Math.max(0, Math.round(minutes));
+
+  if (typeof value === "number") {
+    return ensureMinutes(value >= 0 && value < 1 ? value * 60 : value);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === "-") return null;
+
+    if (/^\d+(\.\d+)?$/.test(trimmed)) {
+      const numeric = Number(trimmed);
+      return ensureMinutes(numeric >= 0 && numeric < 1 ? numeric * 60 : numeric);
+    }
+
+    const durationMatch = trimmed.match(/^(?:(\d+)\s*h)?\s*(?:(\d+)\s*m)?$/i);
+    if (durationMatch) {
+      const hoursNum = Number(durationMatch[1] || 0);
+      const minutesNum = Number(durationMatch[2] || 0);
+      return ensureMinutes(hoursNum * 60 + minutesNum);
+    }
+
+    const colonParts = trimmed.split(":");
+    if (colonParts.length >= 2 && colonParts.length <= 3) {
+      const [h = "0", m = "0", s = "0"] = colonParts.map((part) =>
+        part.trim()
+      );
+      const hoursNum = Number(h);
+      const minutesNum = Number(m);
+      const secondsNum = Number(s);
+      if (
+        [hoursNum, minutesNum, secondsNum].some((num) => Number.isNaN(num))
+      ) {
+        return null;
+      }
+      return ensureMinutes(hoursNum * 60 + minutesNum + secondsNum / 60);
+    }
+  }
+
+  return null;
+};
+
+const formatDurationToClock = (value?: string | number | null) => {
+  const totalMinutes = parseDurationToMinutes(value);
+  if (totalMinutes === null) return "-";
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+};
+
+const renderDurationCell = (value?: string | number | null) => (
+  <span className="font-mono text-sm text-gray-900 dark:text-gray-100">
+    {formatDurationToClock(value)}
+  </span>
+);
+
+const stackedHeaderLabel = (top: string, bottom: string) => (
+  <span className="flex flex-col leading-tight text-center">
+    <span>{top}</span>
+    <span>{bottom}</span>
+  </span>
+);
 
 export default function ArrivalSchedule() {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -52,6 +161,11 @@ export default function ArrivalSchedule() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const calendarRef = useRef<FullCalendar>(null);
+  const [selectedCalendarEvent, setSelectedCalendarEvent] = useState<CalendarEvent | null>(null);
+  const [eventPopoverPosition, setEventPopoverPosition] = useState<{ x: number; y: number } | null>(null);
 
   // Fetch dashboard data from API
   useEffect(() => {
@@ -65,8 +179,9 @@ export default function ArrivalSchedule() {
 
         if (response.success && response.data) {
           // Transform API data to match our interface
-          const regular = transformApiDataToDashboard(response.data.regular_arrivals || []);
-          const additional = transformApiDataToDashboard(response.data.additional_arrivals || []);
+          const data = response.data as any;
+          const regular = transformApiDataToDashboard(data.regular_arrivals || []);
+          const additional = transformApiDataToDashboard(data.additional_arrivals || []);
           setRegularData(regular);
           setAdditionalData(additional);
         } else {
@@ -83,6 +198,133 @@ export default function ArrivalSchedule() {
     fetchScheduleData();
   }, [selectedDate]);
 
+  // Fetch calendar schedule data
+  useEffect(() => {
+    const fetchCalendarData = async () => {
+      try {
+        setCalendarLoading(true);
+        const response = await apiService.getArrivalScheduleForCalendar();
+        
+        if (response.success && response.data) {
+          const schedules = response.data as ArrivalScheduleData[];
+          const events = transformSchedulesToCalendarEvents(schedules);
+          setCalendarEvents(events);
+        }
+      } catch (err: any) {
+        console.error('Error fetching calendar schedule data:', err);
+      } finally {
+        setCalendarLoading(false);
+      }
+    };
+
+    fetchCalendarData();
+  }, []);
+
+  // Transform arrival schedules to calendar events
+  const transformSchedulesToCalendarEvents = (schedules: ArrivalScheduleData[]): CalendarEvent[] => {
+    const events: CalendarEvent[] = [];
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 3, 0); // Show 3 months ahead
+
+    schedules.forEach((schedule) => {
+      if (schedule.arrival_type === 'regular') {
+        // Regular schedule - recurring events based on day_name
+        const dayNameToDayOfWeek: Record<string, number> = {
+          'monday': 1,
+          'tuesday': 2,
+          'wednesday': 3,
+          'thursday': 4,
+          'friday': 5,
+          'saturday': 6,
+          'sunday': 0,
+        };
+
+        const dayOfWeek = dayNameToDayOfWeek[schedule.day_name.toLowerCase()];
+        if (dayOfWeek !== undefined) {
+          // Generate recurring events for the next 3 months
+          let currentDate = new Date(startOfMonth);
+          
+          // Find first occurrence of the day
+          while (currentDate.getDay() !== dayOfWeek && currentDate <= endOfMonth) {
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+
+          while (currentDate <= endOfMonth) {
+            const dateStr = currentDate.toISOString().split('T')[0];
+            const timeParts = schedule.arrival_time.split(':');
+            const hours = parseInt(timeParts[0], 10);
+            const minutes = parseInt(timeParts[1] || '0', 10);
+            const eventDate = new Date(currentDate);
+            eventDate.setHours(hours, minutes, 0, 0);
+
+            let endDate: Date | undefined;
+            if (schedule.departure_time) {
+              const depTimeParts = schedule.departure_time.split(':');
+              const depHours = parseInt(depTimeParts[0], 10);
+              const depMinutes = parseInt(depTimeParts[1] || '0', 10);
+              endDate = new Date(eventDate);
+              endDate.setHours(depHours, depMinutes, 0, 0);
+            }
+
+            events.push({
+              id: `regular-${schedule.id}-${dateStr}`,
+              title: schedule.bp_code,
+              start: eventDate.toISOString(),
+              end: endDate ? endDate.toISOString() : undefined,
+              allDay: false,
+              backgroundColor: '#3b82f6', // Blue for regular
+              borderColor: '#2563eb',
+              textColor: '#ffffff',
+              extendedProps: {
+                arrivalType: 'regular',
+                bpCode: schedule.bp_code,
+                dock: schedule.dock,
+              },
+            });
+
+            // Move to next week
+            currentDate.setDate(currentDate.getDate() + 7);
+          }
+        }
+      } else if (schedule.arrival_type === 'additional' && schedule.schedule_date) {
+        // Additional schedule - one-time event on specific date
+        const timeParts = schedule.arrival_time.split(':');
+        const hours = parseInt(timeParts[0], 10);
+        const minutes = parseInt(timeParts[1] || '0', 10);
+        const eventDate = new Date(schedule.schedule_date);
+        eventDate.setHours(hours, minutes, 0, 0);
+
+        let endDate: Date | undefined;
+        if (schedule.departure_time) {
+          const depTimeParts = schedule.departure_time.split(':');
+          const depHours = parseInt(depTimeParts[0], 10);
+          const depMinutes = parseInt(depTimeParts[1] || '0', 10);
+          endDate = new Date(eventDate);
+          endDate.setHours(depHours, depMinutes, 0, 0);
+        }
+
+        events.push({
+          id: `additional-${schedule.id}`,
+          title: schedule.bp_code,
+          start: eventDate.toISOString(),
+          end: endDate ? endDate.toISOString() : undefined,
+          allDay: false,
+          backgroundColor: '#10b981', // Green for additional
+          borderColor: '#059669',
+          textColor: '#ffffff',
+          extendedProps: {
+            arrivalType: 'additional',
+            bpCode: schedule.bp_code,
+            dock: schedule.dock,
+          },
+        });
+      }
+    });
+
+    return events;
+  };
+
   const handleViewDNList = async (item: DashboardDataItem) => {
     // Fetch DN details from API if group_key is available
     if (item.groupKey) {
@@ -93,10 +335,11 @@ export default function ArrivalSchedule() {
         });
         
         if (response.success && response.data) {
-          const dnList = (response.data.dn_details || []).map((dn: any) => ({
+          const data = response.data as any;
+          const dnList = (data.dn_details || []).map((dn: any) => ({
             dnNumber: dn.dn_number,
-            quantityDN: dn.quantity_dn || 0,
-            quantityActual: dn.quantity_actual || 0,
+            quantityDN: Number(dn.quantity_dn) || 0,
+            quantityActual: Number(dn.quantity_actual) || 0,
             status: dn.scan_status || 'Pending',
           }));
           
@@ -130,34 +373,105 @@ export default function ArrivalSchedule() {
 
   // Transform API data to dashboard format
   const transformApiDataToDashboard = (apiData: any[]): DashboardDataItem[] => {
-    return apiData.map((item, index) => ({
-      no: index + 1,
-      supplier: item.supplier_name || item.bp_code || '-',
-      schedule: item.schedule || '-',
-      dock: item.dock || '-',
-      platNumber: item.vehicle_plate || '-',
-      securityTimeIn: item.security_time_in || '-',
-      securityTimeOut: item.security_time_out || '-',
-      securityDuration: item.security_duration || '-',
-      warehouseTimeIn: item.warehouse_time_in || '-',
-      warehouseTimeOut: item.warehouse_time_out || '-',
-      warehouseDuration: item.warehouse_duration || '-',
-      dnList: (item.dn_list || []).map((dn: any) => ({
+    return apiData.map((item, index) => {
+      const warehouseTimeIn = item.warehouse_time_in || '-';
+      const scheduleTime = item.schedule || '-';
+      
+      // Use arrival_status directly from backend (from arrival_transactions.status column)
+      // Frontend should not calculate status - it's determined by backend logic
+      const arrivalStatus = item.arrival_status || 'pending';
+      
+      const dnList = (item.dn_list || []).map((dn: any) => ({
         dnNumber: dn.dn_number || dn.dnNumber || '-',
         quantityDN: Number(dn.quantity_dn || dn.quantityDN || 0),
         quantityActual: Number(dn.quantity_actual || dn.quantityActual || 0),
         status: dn.scan_status || dn.status || 'Pending',
-      })),
-      arrivalStatus: item.arrival_status || '-',
-      scanStatus: item.scan_status || 'Pending',
-      labelPart: item.label_part || null,
-      coaMsds: item.coa_msds || null,
-      packing: item.packing || null,
-      pic: item.pic || '-',
-      groupKey: item.group_key,
-      quantity_dn: Number(item.quantity_dn || 0),
-      quantity_actual: Number(item.quantity_actual || 0),
-    }));
+      }));
+
+      const scanStatus = item.scan_status || 'Pending';
+      const expectedDnCount = item.dn_count ?? item.expected_dn_count;
+      const deliveredDnCount = item.dn_delivered_count ?? dnList.length;
+      
+      // DN Status comes from backend's delivery_compliance (worst status from group)
+      const dnStatus = item.dn_status || 'Pending';
+
+      return {
+        no: index + 1,
+        supplier: item.supplier_name || item.bp_code || '-',
+        schedule: scheduleTime,
+        dock: item.dock || '-',
+        platNumber: item.vehicle_plate || '-',
+        securityTimeIn: item.security_time_in || '-',
+        securityTimeOut: item.security_time_out || '-',
+        securityDuration: item.security_duration || '-',
+        warehouseTimeIn: warehouseTimeIn,
+        warehouseTimeOut: item.warehouse_time_out || '-',
+        warehouseDuration: item.warehouse_duration || '-',
+        dnList: dnList,
+        arrivalStatus: arrivalStatus,
+        scanStatus: scanStatus,
+        dnStatus: dnStatus,
+        labelPart: item.label_part || null,
+        coaMsds: item.coa_msds || null,
+        packing: item.packing || null,
+        pic: item.pic || '-',
+        groupKey: item.group_key,
+        quantity_dn: Number(item.quantity_dn || 0),
+        quantity_actual: Number(item.quantity_actual || 0),
+        expectedDnCount: expectedDnCount,
+        deliveredDnCount: deliveredDnCount,
+      };
+    });
+  };
+
+  const getArrivalStatusBadge = (status?: string) => {
+    if (!status || status === "-") {
+      return null;
+    }
+
+    const normalized = normalizeArrivalStatus(status);
+
+    const badgeMap: Record<
+      string,
+      {
+        label: string;
+        className: string;
+      }
+    > = {
+      advance: {
+        label: "Advance",
+        className:
+          "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+      },
+      on_time: {
+        label: "On time",
+        className:
+          "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+      },
+      ontime: {
+        label: "On time",
+        className:
+          "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+      },
+      delay: {
+        label: "Delay",
+        className:
+          "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+      },
+      pending: {
+        label: "Pending",
+        className:
+          "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+      },
+    };
+
+    return (
+      badgeMap[normalized] || {
+        label: formatFallbackLabel(status),
+        className:
+          "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
+      }
+    );
   };
 
   // Konfigurasi kolom
@@ -189,51 +503,51 @@ export default function ArrivalSchedule() {
     },
     {
       key: "securityTimeIn",
-      label: "Security Time (In)",
+      label: stackedHeaderLabel("Security", "Time (In)"),
       sortable: false,
     },
     {
       key: "securityTimeOut",
-      label: "Security Time (Out)",
+      label: stackedHeaderLabel("Security", "Time (Out)"),
       sortable: false,
     },
     {
       key: "securityDuration",
       label: "Duration",
       sortable: false,
+      render: (value) => renderDurationCell(value as string | number | null),
     },
     {
       key: "warehouseTimeIn",
-      label: "Warehouse Time (In)",
+      label: stackedHeaderLabel("Warehouse", "Time (In)"),
       sortable: false,
     },
     {
       key: "warehouseTimeOut",
-      label: "Warehouse Time (Out)",
+      label: stackedHeaderLabel("Warehouse", "Time (Out)"),
       sortable: false,
     },
     {
       key: "warehouseDuration",
       label: "Duration",
       sortable: false,
+      render: (value) => renderDurationCell(value as string | number | null),
     },
     {
       key: "arrivalStatus",
       label: "Arrival Status",
       sortable: true,
       render: (value) => {
-        const statusColors: Record<string, string> = {
-          "Advance": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-          "Ontime": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-          "Delay": "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-          "pending": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-        };
-        
-        if (value === "-" || !value) return <span className="text-gray-500">-</span>;
-        
+        const badge = getArrivalStatusBadge(value as string);
+        if (!badge) {
+          return <span className="text-gray-500">-</span>;
+        }
+
         return (
-          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors[value] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"}`}>
-            {value}
+          <span
+            className={`px-2.5 py-1 text-xs font-medium rounded-full ${badge.className}`}
+          >
+            {badge.label}
           </span>
         );
       }
@@ -261,7 +575,7 @@ export default function ArrivalSchedule() {
       key: "quantity_dn",
       label: "Quantity (DN)",
       sortable: true,
-      render: (value, row: any) => {
+      render: (_value, row: any) => {
         const qty = row.quantity_dn || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityDN, 0) || 0;
         return <span className=" dark:text-white">{qty.toLocaleString()}</span>;
       }
@@ -270,7 +584,7 @@ export default function ArrivalSchedule() {
       key: "quantity_actual",
       label: "Quantity (Actual)",
       sortable: true,
-      render: (value, row: any) => {
+      render: (_value, row: any) => {
         const qtyDN = row.quantity_dn || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityDN, 0) || 0;
         const qtyActual = row.quantity_actual || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityActual, 0) || 0;
         const isMatch = qtyDN === qtyActual;
@@ -353,6 +667,27 @@ export default function ArrivalSchedule() {
       }
     },
     {
+      key: "dnStatus",
+      label: "DN Status",
+      sortable: true,
+      render: (value) => {
+        const statusColors: Record<string, string> = {
+          "Pending": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+          "On Commitment": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+          "Incomplete Qty": "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
+          "Outstanding DN": "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
+          "Delay": "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+          "No Show": "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
+        };
+        
+        return (
+          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors[value] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"}`}>
+            {value}
+          </span>
+        );
+      }
+    },
+    {
       key: "pic",
       label: "PIC",
       sortable: true,
@@ -361,11 +696,24 @@ export default function ArrivalSchedule() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading schedule data...</p>
+      <div className="overflow-x-hidden space-y-5 sm:space-y-6">
+        <PageMeta
+          title="Arrival Schedule | SPHERE by SANOH Indonesia"
+          description="This is React.js Arrival Schedule page for SPHERE by SANOH Indonesia"
+        />
+        <PageBreadcrumb pageTitle="Arrival Schedule" />
+        
+        {/* Date Picker Skeleton */}
+        <div className="flex justify-end mb-4">
+          <div className="flex items-center gap-4">
+            <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            <div className="w-full sm:w-[250px] h-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+          </div>
         </div>
+
+        {/* Tables Skeleton */}
+        <SkeletonDataTable rows={5} columns={12} showTitle={true} />
+        <SkeletonDataTable rows={5} columns={12} showTitle={true} />
       </div>
     );
   }
@@ -405,11 +753,16 @@ export default function ArrivalSchedule() {
               mode="single"
               placeholder="Select date"
               defaultDate={selectedDate}
-              onChange={(selectedDates, dateStr, instance) => {
+              onChange={(selectedDates, dateStr) => {
                 // flatpickr onChange hook signature: (selectedDates, dateStr, instance)
                 if (selectedDates && selectedDates.length > 0) {
                   const date = selectedDates[0];
-                  const formattedDate = date.toISOString().split('T')[0];
+                  // Format date in local timezone to avoid timezone offset issues
+                  // Using local date methods instead of toISOString() which uses UTC
+                  const year = date.getFullYear();
+                  const month = String(date.getMonth() + 1).padStart(2, '0');
+                  const day = String(date.getDate()).padStart(2, '0');
+                  const formattedDate = `${year}-${month}-${day}`;
                   setSelectedDate(formattedDate);
                 } else if (dateStr) {
                   // dateStr sudah dalam format Y-m-d (sesuai dateFormat di DatePicker)
@@ -449,6 +802,158 @@ export default function ArrivalSchedule() {
         />
       </div>
 
+      {/* Calendar Section */}
+      <div className="space-y-5 sm:space-y-6">
+        <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+          <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-800">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
+              Arrival Schedule Calendar
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              View all supplier arrival schedules. Regular schedules are shown in blue, additional schedules are shown in green.
+            </p>
+          </div>
+          
+          {calendarLoading ? (
+            <div className="flex items-center justify-center p-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Loading calendar...</p>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 sm:p-6">
+              <div className="custom-calendar">
+                <FullCalendar
+                  ref={calendarRef}
+                  plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                  initialView="dayGridMonth"
+                  headerToolbar={{
+                    left: "prev,next today",
+                    center: "title",
+                    right: "dayGridMonth,timeGridWeek,timeGridDay",
+                  }}
+                  events={calendarEvents}
+                  eventContent={renderEventContent}
+                  eventClick={(clickInfo) => {
+                    const event = clickInfo.event as unknown as CalendarEvent;
+                    setSelectedCalendarEvent(event);
+                    const rect = clickInfo.el.getBoundingClientRect();
+                    setEventPopoverPosition({ x: rect.left, y: rect.bottom + window.scrollY });
+                  }}
+                  height="auto"
+                  editable={false}
+                  selectable={false}
+                  dayMaxEventRows={3}
+                  moreLinkClick="popover"
+                />
+              </div>
+              
+              {/* Legend */}
+              <div className="mt-6 flex flex-wrap items-center gap-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-blue-500"></div>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Regular Schedule</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-green-500"></div>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Additional Schedule</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Event Details Popover */}
+      {selectedCalendarEvent && (
+        <>
+          <div 
+            className="fixed inset-0 z-40" 
+            onClick={() => {
+              setSelectedCalendarEvent(null);
+              setEventPopoverPosition(null);
+            }}
+          />
+          <div 
+            className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 max-w-sm"
+            style={{
+              top: eventPopoverPosition?.y || 0,
+              left: eventPopoverPosition?.x || 0,
+            }}
+          >
+            <div className="flex justify-between items-start mb-3">
+              <h4 className="text-lg font-semibold text-gray-800 dark:text-white">
+                Event Details
+              </h4>
+              <button
+                onClick={() => {
+                  setSelectedCalendarEvent(null);
+                  setEventPopoverPosition(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="space-y-2">
+              <div>
+                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">BP Code:</span>
+                <p className="text-sm text-gray-800 dark:text-white font-medium">
+                  {selectedCalendarEvent.extendedProps.bpCode}
+                </p>
+              </div>
+              
+              <div>
+                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Type:</span>
+                <p className="text-sm">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    selectedCalendarEvent.extendedProps.arrivalType === 'regular'
+                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                      : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                  }`}>
+                    {selectedCalendarEvent.extendedProps.arrivalType === 'regular' ? 'Regular' : 'Additional'}
+                  </span>
+                </p>
+              </div>
+              
+              {selectedCalendarEvent.start && (
+                <div>
+                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Time:</span>
+                  <p className="text-sm text-gray-800 dark:text-white">
+                    {typeof selectedCalendarEvent.start === 'string' 
+                      ? new Date(selectedCalendarEvent.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                      : selectedCalendarEvent.start instanceof Date
+                        ? selectedCalendarEvent.start.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                        : '-'
+                    }
+                    {selectedCalendarEvent.end && (
+                      typeof selectedCalendarEvent.end === 'string'
+                        ? ` - ${new Date(selectedCalendarEvent.end).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`
+                        : selectedCalendarEvent.end instanceof Date
+                          ? ` - ${selectedCalendarEvent.end.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`
+                          : ''
+                    )}
+                  </p>
+                </div>
+              )}
+              
+              {selectedCalendarEvent.extendedProps.dock && (
+                <div>
+                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Dock:</span>
+                  <p className="text-sm text-gray-800 dark:text-white">
+                    {selectedCalendarEvent.extendedProps.dock}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
       {/* DN List Popup */}
       {selectedDNData && (
         <DNListPopup
@@ -462,3 +967,20 @@ export default function ArrivalSchedule() {
     </div>
   );
 }
+
+// Render event content for calendar - simplified to show only bp_code
+const renderEventContent = (eventInfo: any) => {
+  const event = eventInfo.event;
+  const bpCode = event.extendedProps.bpCode;
+  const arrivalType = event.extendedProps.arrivalType;
+  
+  // Determine color based on arrival type
+  const colorClass = arrivalType === 'regular' ? 'fc-bg-primary' : 'fc-bg-success';
+  
+  return (
+    <div className={`event-fc-color flex fc-event-main ${colorClass} p-1 rounded-sm cursor-pointer hover:opacity-80 transition-opacity`}>
+      <div className="fc-daygrid-event-dot"></div>
+      <div className="fc-event-title truncate">{bpCode}</div>
+    </div>
+  );
+};

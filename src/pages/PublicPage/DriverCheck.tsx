@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
-import PageBreadcrumb from "../../components/common/PageBreadCrumb";
-import PageMeta from "../../components/common/PageMeta";
 import DataTableOne from "../../components/tables/DataTables/TableOne/DataTableOne";
 import { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
 import ConfirmationPopup from "../../components/popups/ConfirmationPopup";
-import { SkeletonDataTable } from "../../components/ui/skeleton/Skeleton";
+import ThemeTogglerTwo from "../../components/common/ThemeTogglerTwo";
 import { useToast } from "../../hooks/useToast";
 import apiService from "../../services/api";
 
@@ -19,7 +17,7 @@ interface ArrivalRow {
   arrivalType: "regular" | "additional";
 }
 
-export default function ArrivalCheck() {
+export default function DriverCheck() {
   const toast = useToast();
   const [rows, setRows] = useState<ArrivalRow[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -41,12 +39,11 @@ export default function ArrivalCheck() {
       const res = await apiService.getArrivalCheckList({
         date: selectedDate,
         type: mode,
-      });
+      }, true);
       if (res.success) {
         const arrivalsData =
           (res.data as { arrivals?: any[] } | undefined)?.arrivals || [];
         const list = arrivalsData as any[];
-        // sort by schedule time if available via group key's time portion
         const mapped: ArrivalRow[] = list.map((g: any, idx: number) => ({
           no: idx + 1,
           supplier: g.supplier_name || g.bp_code || "-",
@@ -79,6 +76,11 @@ export default function ArrivalCheck() {
 
   useEffect(() => {
     fetchData();
+    // Auto-refresh every 60 seconds
+    const interval = setInterval(() => {
+      fetchData();
+    }, 60000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, selectedDate]);
 
@@ -102,10 +104,10 @@ export default function ArrivalCheck() {
       setError(null);
 
       if (confirmationMode === "checkin") {
-        await apiService.arrivalCheckin(selectedRow.arrivalIds);
+        await apiService.arrivalCheckin(selectedRow.arrivalIds, true);
         toast.success("Check-in successful!", { title: "Success" });
       } else {
-        await apiService.arrivalCheckout(selectedRow.arrivalIds);
+        await apiService.arrivalCheckout(selectedRow.arrivalIds, true);
         toast.success("Check-out successful!", { title: "Success" });
       }
 
@@ -222,58 +224,64 @@ export default function ArrivalCheck() {
   ];
 
   return (
-    <>
-      <PageMeta
-        title="Arrival Check | SPHERE by SANOH Indonesia"
-        description="This is React.js Data Tables Dashboard page for SPHERE by SANOH Indonesia"
-      />
-      <PageBreadcrumb pageTitle="Arrival Check" />
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 relative">
+      {/* Floating Theme Toggle Button */}
+      <div className="fixed z-50 bottom-6 right-6">
+        <ThemeTogglerTwo />
+      </div>
 
-      <div className="space-y-5 sm:space-y-6">
-        <div className="flex items-center gap-0.5 rounded-lg bg-gray-100 p-0.5 dark:bg-gray-900">
-          <button
-            onClick={() => {
-              if (mode !== "checkin") {
-                setMode("checkin");
-                setRows([]);
-                setError(null);
-              }
-            }}
-            className={`px-3 py-2 font-medium w-full rounded-md text-theme-sm transition-colors ${
-              isCheckinTab
-                ? "shadow-theme-xs text-gray-900 dark:text-white bg-white dark:bg-gray-800"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-            }`}
-          >
-            Warehouse Check-In
-          </button>
-          <button
-            onClick={() => {
-              if (mode !== "checkout") {
-                setMode("checkout");
-                setRows([]);
-                setError(null);
-              }
-            }}
-            className={`px-3 py-2 font-medium w-full rounded-md text-theme-sm transition-colors ${
-              mode === "checkout"
-                ? "shadow-theme-xs text-gray-900 dark:text-white bg-white dark:bg-gray-800"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-            }`}
-          >
-            Warehouse Check-Out
-          </button>
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            Driver Check-In / Check-Out
+          </h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Warehouse arrival management for drivers
+          </p>
         </div>
 
-        {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
-            {error}
+        <div className="space-y-5 sm:space-y-6">
+          <div className="flex items-center gap-0.5 rounded-lg bg-gray-100 p-0.5 dark:bg-gray-900">
+            <button
+              onClick={() => {
+                if (mode !== "checkin") {
+                  setMode("checkin");
+                  setRows([]);
+                  setError(null);
+                }
+              }}
+              className={`px-3 py-2 font-medium w-full rounded-md text-theme-sm transition-colors ${
+                isCheckinTab
+                  ? "shadow-theme-xs text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              }`}
+            >
+              Warehouse Check-In
+            </button>
+            <button
+              onClick={() => {
+                if (mode !== "checkout") {
+                  setMode("checkout");
+                  setRows([]);
+                  setError(null);
+                }
+              }}
+              className={`px-3 py-2 font-medium w-full rounded-md text-theme-sm transition-colors ${
+                mode === "checkout"
+                  ? "shadow-theme-xs text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              }`}
+            >
+              Warehouse Check-Out
+            </button>
           </div>
-        )}
 
-        {loading ? (
-          <SkeletonDataTable rows={5} columns={5} showTitle={true} />
-        ) : (
+          {error && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+              {error}
+            </div>
+          )}
+
           <DataTableOne
             title={isCheckinTab ? "Driver Check In" : "Driver Check Out"}
             data={rows}
@@ -285,20 +293,21 @@ export default function ArrivalCheck() {
             searchable={true}
             searchPlaceholder={searchPlaceholder}
           />
-        )}
-      </div>
+        </div>
 
-      {/* Confirmation Modal */}
-      <ConfirmationPopup
-        isOpen={showModal}
-        onClose={cancelAction}
-        onConfirm={confirmAction}
-        title={modalTitle}
-        message={modalMessage}
-        confirmText={confirmText}
-        cancelText="Batal"
-        variant="primary"
-      />
-    </>
+        {/* Confirmation Modal */}
+        <ConfirmationPopup
+          isOpen={showModal}
+          onClose={cancelAction}
+          onConfirm={confirmAction}
+          title={modalTitle}
+          message={modalMessage}
+          confirmText={confirmText}
+          cancelText="Batal"
+          variant="primary"
+        />
+      </div>
+    </div>
   );
 }
+

@@ -3,10 +3,12 @@ import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { Link } from "react-router";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../hooks/useToast";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const { user, logout } = useAuth();
+  const toast = useToast();
 
   function toggleDropdown() {
     setIsOpen(!isOpen);
@@ -17,7 +19,11 @@ export default function UserDropdown() {
   }
 
   const handleLogout = () => {
-    logout();
+    toast.success('Logout successful!', { title: 'Goodbye' });
+    // Small delay to allow toast to display before redirect
+    setTimeout(() => {
+      logout();
+    }, 500);
     closeDropdown();
   };
 
@@ -28,7 +34,7 @@ export default function UserDropdown() {
         className="flex items-center text-gray-700 dropdown-toggle dark:text-gray-400"
       >
         <span className="mr-3 overflow-hidden rounded-full h-11 w-11">
-          <img src="/images/user/owner.jpg" alt="User" />
+          <img src="/images/icons/profile-icon.png" alt="User" />
         </span>
 
         <span className="block mr-1 font-medium text-theme-sm">

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import DataTableOne, { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
+import { SkeletonDataTable, Skeleton } from "../../components/ui/skeleton/Skeleton";
 import apiService from "../../services/api";
 
 // Interface untuk data stock
@@ -208,45 +209,62 @@ const columns: ColumnConfig[] = [
         description="This is React.js Data Tables Dashboard page for SPHERE by SANOH Indonesia"
       />
       <PageBreadcrumb pageTitle="Level Stock" />
-      {loading && (
-        <div className="text-gray-600 dark:text-gray-300">Loading stock data...</div>
-      )}
-      {error && (
-        <div className="text-red-600 dark:text-red-400">{error}</div>
-      )}
       
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-[#171A2A] rounded-lg p-4 border-b-[2px] border-red-800">
-          <div className="text-white text-sm font-medium">Critical Parts</div>
-          <div className="text-3xl font-bold text-white/80 mt-1">{criticalParts}</div>
-        </div>
-        
-        <div className="bg-[#171A2A] rounded-lg p-4 border-b-[2px] border-yellow-800">
-          <div className="text-white text-sm font-medium">Overstock Parts</div>
-          <div className="text-3xl font-bold text-white/80 mt-1">{overstockParts}</div>
-        </div>
-        
-        <div className="bg-[#171A2A] rounded-lg p-4 border-b-[2px] border-green-600">
-          <div className="text-white text-sm font-medium">Normal Parts</div>
-          <div className="text-3xl font-bold text-white/80 mt-1">{normalParts}</div>
-        </div>
-      </div>
+      {loading ? (
+        <>
+          {/* Summary Cards Skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="bg-white dark:bg-[#171A2A] rounded-lg p-4 border-b-[2px] border-gray-300">
+                <Skeleton height={16} width="60%" className="mb-3" />
+                <Skeleton height={32} width="50%" />
+              </div>
+            ))}
+          </div>
+          
+          {/* Table Skeleton */}
+          <SkeletonDataTable rows={5} columns={10} showTitle={true} />
+        </>
+      ) : (
+        <>
+          {error && (
+            <div className="text-red-600 dark:text-red-400">{error}</div>
+          )}
+          
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="bg-white dark:bg-[#171A2A] rounded-lg p-4 border-b-[2px] border-red-800">
+              <div className="text-gray-800 dark:text-white text-sm font-medium">Critical Parts</div>
+              <div className="text-3xl font-bold text-gray-800 dark:text-white/80 mt-1">{criticalParts}</div>
+            </div>
+            
+            <div className="bg-white dark:bg-[#171A2A] rounded-lg p-4 border-b-[2px] border-yellow-800">
+              <div className="text-gray-800 dark:text-white text-sm font-medium">Overstock Parts</div>
+              <div className="text-3xl font-bold text-gray-800 dark:text-white/80 mt-1">{overstockParts}</div>
+            </div>
+            
+            <div className="bg-white dark:bg-[#171A2A] rounded-lg p-4 border-b-[2px] border-green-600">
+              <div className="text-gray-800 dark:text-white text-sm font-medium">Normal Parts</div>
+              <div className="text-3xl font-bold text-gray-800 dark:text-white/80 mt-1">{normalParts}</div>
+            </div>
+          </div>
 
-      {/* Data Table */}
-      <div className="space-y-5 sm:space-y-6">
-        <DataTableOne 
-          title="Stock by Warehouse"
-          data={enhancedStockData}
-          columns={columns}
-          defaultItemsPerPage={10}
-          itemsPerPageOptions={[5, 10, 15, 20, 50]}
-          defaultSortKey="partno"
-          defaultSortOrder="asc"
-          searchable={true}
-          searchPlaceholder="Search part number, description, customer..."
-        />
-      </div>
+          {/* Data Table */}
+          <div className="space-y-5 sm:space-y-6">
+            <DataTableOne 
+              title="Stock by Warehouse"
+              data={enhancedStockData}
+              columns={columns}
+              defaultItemsPerPage={10}
+              itemsPerPageOptions={[5, 10, 15, 20, 50]}
+              defaultSortKey="partno"
+              defaultSortOrder="asc"
+              searchable={true}
+              searchPlaceholder="Search part number, description, customer..."
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

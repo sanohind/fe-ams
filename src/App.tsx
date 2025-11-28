@@ -1,4 +1,6 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router";
+import { HashRouter as Router, Routes, Route } from "react-router";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Ecommerce from "./pages/Dashboard/Ecommerce";
@@ -72,10 +74,27 @@ import ArrivalManage from "./pages/MainPage/ArrivalManage";
 import AddArrival from "./pages/MainPage/AddArrival";
 import ItemScan from "./pages/MainPage/ItemScan";
 import IconGalery from "./pages/MainPage/IconGalery";
+import SupplierContacts from "./pages/MainPage/SupplierContacts";
+import CheckSheetHistory from "./pages/MainPage/CheckSheetHistory";
+import DriverCheck from "./pages/PublicPage/DriverCheck";
+import PublicDashboard from "./pages/PublicPage/PublicDashboard";
 
 export default function App() {
   return (
     <AuthProvider>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick={false}
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored"
+        style={{ zIndex: 999999 }}
+      />
       <Router>
         <ScrollToTop />
         <Routes>
@@ -83,43 +102,53 @@ export default function App() {
           <Route element={<AppLayout />}>
             {/* Main page - Protected routes */}
             <Route index path="/" element={
-              <ProtectedRoute requiredRoles={['admin-warehouse', 'superadmin', 'operator-warehouse']}>
+              <ProtectedRoute requiredRoles={['admin', 'superadmin', 'operator']}>
                 <MainPageDashboard />
               </ProtectedRoute>
             } />
             <Route path="/arrival-check" element={
-              <ProtectedRoute requiredRoles={['operator-warehouse', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['operator', 'superadmin']}>
                 <ArrivalCheck />
               </ProtectedRoute>
             } />
             <Route path="/arrival-schedule" element={
-              <ProtectedRoute requiredRoles={['admin-warehouse', 'operator-warehouse', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['admin', 'operator', 'superadmin']}>
                 <ArrivalSchedule />
               </ProtectedRoute>
             } />
             <Route path="/checksheet" element={
-              <ProtectedRoute requiredRoles={['operator-warehouse', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['operator', 'superadmin']}>
                 <CheckSheet />
               </ProtectedRoute>
             } />
+            <Route path="/check-sheet-history" element={
+              <ProtectedRoute requiredRoles={['operator', 'superadmin']}>
+                <CheckSheetHistory />
+              </ProtectedRoute>
+            } />
             <Route path="/level-stock" element={
-              <ProtectedRoute requiredRoles={['admin-warehouse', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['admin', 'superadmin']}>
                 <LevelStock />
               </ProtectedRoute>
             } />
             <Route path="/arrival-manage" element={
-              <ProtectedRoute requiredRoles={['admin-warehouse', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['admin', 'superadmin']}>
                 <ArrivalManage />
               </ProtectedRoute>
             } />
             <Route path="/add-arrival" element={
-              <ProtectedRoute requiredRoles={['admin-warehouse', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['admin', 'superadmin']}>
                 <AddArrival />
               </ProtectedRoute>
             } />
             <Route path="/item-scan" element={
-              <ProtectedRoute requiredRoles={['operator-warehouse', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['operator', 'superadmin']}>
                 <ItemScan />
+              </ProtectedRoute>
+            } />
+            <Route path="/supplier-contacts" element={
+              <ProtectedRoute requiredRoles={['admin', 'superadmin', 'operator']}>
+                <SupplierContacts />
               </ProtectedRoute>
             } />
             <Route path="/icon-galery" element={<IconGalery />} />
@@ -198,6 +227,10 @@ export default function App() {
           
           {/* SSO Callback */}
           <Route path="/sso/callback" element={<SSOCallback />} />
+
+          {/* Public Pages - No Authentication Required */}
+          <Route path="/driver" element={<DriverCheck />} />
+          <Route path="/arrival-dashboard" element={<PublicDashboard />} />
 
           {/* Fallback Route */}
           <Route path="*" element={<NotFound />} />

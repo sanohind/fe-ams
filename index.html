@@ -8,5 +8,35 @@
   <body class="dark:bg-gray-900">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Compatibility fallback:
+      // Sphere SSO seharusnya mengarahkan langsung ke /#/sso/callback.
+      // Blok ini menjaga agar instance backend lama (yang masih mengirim tanpa hash)
+      // tetap berfungsi dengan menormalkan URL sebelum React Router berjalan.
+      // If URL is /sso/callback without hash, redirect to hash version
+      (function() {
+        const pathname = window.location.pathname;
+        const search = window.location.search;
+        const hash = window.location.hash;
+        
+        // Check if we're on /sso/callback path
+        if (pathname === '/sso/callback') {
+          // Extract only the query string (token), ignore any hash that might be in the URL
+          const cleanSearch = search.split('#')[0]; // Remove hash from search if present
+          
+          // If there's a hash after the query string (e.g., ?token=...#/supplier-contacts)
+          // Extract it and store it for later redirect
+          if (search.includes('#')) {
+            const hashPart = search.split('#')[1];
+            if (hashPart) {
+              sessionStorage.setItem('sso_redirect_path', hashPart);
+            }
+          }
+          
+          // Redirect to hash version with query params only (no extra hash)
+          window.location.replace('#' + pathname + cleanSearch);
+        }
+      })();
+    </script>
   </body>
 </html>

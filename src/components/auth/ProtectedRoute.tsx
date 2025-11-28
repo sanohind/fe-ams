@@ -11,8 +11,21 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
   const { isAuthenticated, isLoading, hasRole } = useAuth();
 
   const redirectToSphereLogin = () => {
+    // Save current path before redirecting to SSO.
+    // Ini penting sebagai fallback ketika instance backend Sphere belum
+    // mengirim callback hash, sehingga FE dapat mengembalikan user ke path semula.
+    const currentPath = window.location.hash 
+      ? window.location.hash.replace('#', '') || '/'
+      : window.location.pathname;
+    
+    // Don't save if it's already the callback path
+    if (currentPath !== '/sso/callback') {
+      sessionStorage.setItem('sso_redirect_path', currentPath);
+    }
+    
     const appOrigin = window.location.origin;
-    const callback = `${appOrigin}/sso/callback`;
+    // Use hash routing for callback URL
+    const callback = `${appOrigin}/#/sso/callback`;
     const sphereSsoBase = import.meta.env.VITE_SPHERE_SSO_URL || 'http://127.0.0.1:8000/sso/login';
     const redirectUrl = `${sphereSsoBase}?redirect=${encodeURIComponent(callback)}`;
     window.location.href = redirectUrl;
