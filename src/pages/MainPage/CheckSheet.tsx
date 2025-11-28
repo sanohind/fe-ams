@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
+import { History } from "lucide-react";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import DataTableOne from "../../components/tables/DataTables/TableOne/DataTableOne";
 import { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
+import { SkeletonDataTable } from "../../components/ui/skeleton/Skeleton";
+import { useToast } from "../../hooks/useToast";
 import apiService from "../../services/api";
 
 // Interface untuk data
@@ -21,6 +25,8 @@ interface CheckSheetData {
 }
 
 export default function CheckSheet() {
+  const navigate = useNavigate();
+  const toast = useToast();
   const [data, setData] = useState<CheckSheetData[]>([]);
   const [selectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
@@ -98,8 +104,10 @@ export default function CheckSheet() {
       await apiService.submitCheckSheet(body as any);
       // Update UI state
       setData((prev) => prev.map((item, idx) => idx === rowIndex ? { ...item, [field]: nextValue } : item));
-    } catch (e) {
-      // ignore for now
+      toast.success('Checklist updated successfully!', { title: 'Success' });
+    } catch (e: any) {
+      const errorMsg = e?.message || 'Failed to update checklist';
+      toast.error(errorMsg, { title: 'Error' });
     }
   };
 
@@ -194,17 +202,36 @@ export default function CheckSheet() {
       />
       <PageBreadcrumb pageTitle="Check Sheet" />
       <div className="space-y-5 sm:space-y-6">
-        <DataTableOne
-          title="Check Sheet Data"
-          data={data}
-          columns={columns}
-          defaultItemsPerPage={10}
-          itemsPerPageOptions={[5, 10, 15, 20]}
-          defaultSortKey="no"
-          defaultSortOrder="asc"
-          searchable={true}
-          searchPlaceholder="Search DN numbers, supplier, driver..."
-        />
+        {/* Header with History Button */}
+        <div className="flex justify-end items-center mb-4">
+          {loading ? (
+            <div className="h-10 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+          ) : (
+            <button
+              onClick={() => navigate("/check-sheet-history")}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+            >
+              <History className="w-4 h-4" />
+              View History
+            </button>
+          )}
+        </div>
+        {loading ? (
+          <SkeletonDataTable rows={5} columns={11} showTitle={true} />
+        ) : (
+          <DataTableOne
+            title="Check Sheet Data"
+            data={data}
+            columns={columns}
+            defaultItemsPerPage={10}
+            itemsPerPageOptions={[5, 10, 15, 20]}
+            defaultSortKey="no"
+            defaultSortOrder="asc"
+            searchable={true}
+            searchPlaceholder="Search DN numbers, supplier, driver..."
+            emptyStateMessage="There are no suppliers who have performed a warehouse check-in today. The data will appear automatically once a supplier completes the check-in."
+          />
+        )}
       </div>
     </>
   );

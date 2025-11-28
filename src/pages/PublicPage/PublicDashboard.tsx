@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
-import { FileText } from "lucide-react";
-import PageBreadcrumb from "../../components/common/PageBreadCrumb";
-import PageMeta from "../../components/common/PageMeta";
+import { FileText, Clock, Calendar } from "lucide-react";
 import DataTableOne, { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
 import DNListPopup from "../../components/popups/DNListPopup";
-import { SkeletonDataTable, Skeleton } from "../../components/ui/skeleton/Skeleton";
+import ThemeTogglerTwo from "../../components/common/ThemeTogglerTwo";
 import apiService from "../../services/api";
 
 // Interface untuk DN Item
@@ -28,10 +26,10 @@ interface DashboardDataItem {
   warehouseTimeIn: string;
   warehouseTimeOut: string;
   warehouseDuration: string;
-  dnList: DNItem[]; // Array of DN items
+  dnList: DNItem[];
   arrivalStatus: string;
   scanStatus: string;
-  dnStatus: string; // New field for DN completeness status
+  dnStatus: string;
   labelPart: string | null;
   coaMsds: string | null;
   packing: string | null;
@@ -39,12 +37,9 @@ interface DashboardDataItem {
   groupKey?: string;
   quantity_dn?: number;
   quantity_actual?: number;
-  expectedDnCount?: number; // Total DN expected for this schedule
-  deliveredDnCount?: number; // DN count that has been delivered
+  expectedDnCount?: number;
+  deliveredDnCount?: number;
 }
-
-// Data untuk dashboard dengan multiple DN (unused - data comes from API)
-// Removed static data - now using API data
 
 const normalizeArrivalStatus = (status?: string) =>
   (status || "").toLowerCase().replace(/[\s-]+/g, "_");
@@ -114,14 +109,7 @@ const renderDurationCell = (value?: string | number | null) => (
   </span>
 );
 
-const stackedHeaderLabel = (top: string, bottom: string) => (
-  <span className="flex flex-col leading-tight text-center">
-    <span>{top}</span>
-    <span>{bottom}</span>
-  </span>
-);
-
-export default function Dashboard() {
+export default function PublicDashboard() {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [selectedDNData, setSelectedDNData] = useState<{
     dnList: DNItem[];
@@ -131,7 +119,9 @@ export default function Dashboard() {
   const [regularData, setRegularData] = useState<DashboardDataItem[]>([]);
   const [additionalData, setAdditionalData] = useState<DashboardDataItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const [summaryStats, setSummaryStats] = useState<{
     totalSupplier: number;
     totalAdvance: number;
@@ -144,59 +134,78 @@ export default function Dashboard() {
     totalDelay: 0,
   });
 
-  // Fetch dashboard data from API
+  // Update time every second
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Fetch dashboard data from API
+  const fetchDashboardData = async (isInitialLoad = false) => {
+    try {
+      if (isInitialLoad) {
         setLoading(true);
-        setError(null);
-        
-        // Fetch dashboard data for today
-        const response = await apiService.getDashboardStats();
-
-        if (response.success && response.data) {
-          // Transform API data to match our interface
-          const data = response.data as any;
-          const regular = transformApiDataToDashboard(data.regular_arrivals || []);
-          const additional = transformApiDataToDashboard(data.additional_arrivals || []);
-          setRegularData(regular);
-          setAdditionalData(additional);
-          
-          // Calculate summary statistics
-          const allData = [...regular, ...additional];
-          const uniqueSuppliers = new Set(allData.map(item => item.supplier)).size;
-          const totalAdvance = allData.filter(item => normalizeArrivalStatus(item.arrivalStatus) === 'advance').length;
-          const totalOnTime = allData.filter(item => normalizeArrivalStatus(item.arrivalStatus) === 'on_time').length;
-          const totalDelay = allData.filter(item => normalizeArrivalStatus(item.arrivalStatus) === 'delay').length;
-          
-          setSummaryStats({
-            totalSupplier: uniqueSuppliers,
-            totalAdvance,
-            totalOnTime,
-            totalDelay,
-          });
-        } else {
-          setError(response.message || 'Failed to fetch dashboard data');
-        }
-      } catch (err: any) {
-        console.error('Error fetching dashboard data:', err);
-        setError(err.message || 'Failed to fetch dashboard data');
-      } finally {
-        setLoading(false);
+      } else {
+        setIsRefreshing(true);
       }
-    };
+      setError(null);
+      
+        const response = await apiService.getDashboardStats(undefined, true);
 
-    fetchDashboardData();
+      if (response.success && response.data) {
+        const data = response.data as any;
+        const regular = transformApiDataToDashboard(data.regular_arrivals || []);
+        const additional = transformApiDataToDashboard(data.additional_arrivals || []);
+        setRegularData(regular);
+        setAdditionalData(additional);
+        
+        const allData = [...regular, ...additional];
+        const uniqueSuppliers = new Set(allData.map(item => item.supplier)).size;
+        const totalAdvance = allData.filter(item => normalizeArrivalStatus(item.arrivalStatus) === 'advance').length;
+        const totalOnTime = allData.filter(item => normalizeArrivalStatus(item.arrivalStatus) === 'on_time').length;
+        const totalDelay = allData.filter(item => normalizeArrivalStatus(item.arrivalStatus) === 'delay').length;
+        
+        setSummaryStats({
+          totalSupplier: uniqueSuppliers,
+          totalAdvance,
+          totalOnTime,
+          totalDelay,
+        });
+      } else {
+        setError(response.message || 'Failed to fetch dashboard data');
+      }
+    } catch (err: any) {
+      console.error('Error fetching dashboard data:', err);
+      setError(err.message || 'Failed to fetch dashboard data');
+    } finally {
+      if (isInitialLoad) {
+        setLoading(false);
+      } else {
+        setIsRefreshing(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    // Initial load
+    fetchDashboardData(true);
+    
+    // Auto-refresh every 5 minutes (silent refresh - no loading screen)
+    const interval = setInterval(() => {
+      fetchDashboardData(false);
+    }, 300000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleViewDNList = async (item: DashboardDataItem) => {
-    // Fetch DN details from API if group_key is available
     if (item.groupKey) {
       try {
         const response = await apiService.getDashboardDnDetails({ 
           group_key: item.groupKey,
           date: new Date().toISOString().split('T')[0]
-        });
+        }, true);
         
         if (response.success && response.data) {
           const data = response.data as any;
@@ -216,7 +225,6 @@ export default function Dashboard() {
         }
       } catch (err) {
         console.error('Error fetching DN details:', err);
-        // Fallback to local data
         setSelectedDNData({
           dnList: item.dnList,
           supplier: item.supplier,
@@ -225,7 +233,6 @@ export default function Dashboard() {
         setIsPopupOpen(true);
       }
     } else {
-      // Use local data
       setSelectedDNData({
         dnList: item.dnList,
         supplier: item.supplier,
@@ -235,14 +242,10 @@ export default function Dashboard() {
     }
   };
 
-  // Transform API data to dashboard format
   const transformApiDataToDashboard = (apiData: any[]): DashboardDataItem[] => {
     return apiData.map((item, index) => {
       const warehouseTimeIn = item.warehouse_time_in || '-';
       const scheduleTime = item.schedule || '-';
-      
-      // Use arrival_status directly from backend (from arrival_transactions.status column)
-      // Frontend should not calculate status - it's determined by backend logic
       const arrivalStatus = item.arrival_status || 'pending';
       
       const dnList = (item.dn_list || []).map((dn: any) => ({
@@ -255,8 +258,6 @@ export default function Dashboard() {
       const scanStatus = item.scan_status || 'Pending';
       const expectedDnCount = item.dn_count ?? item.expected_dn_count;
       const deliveredDnCount = item.dn_delivered_count ?? dnList.length;
-      
-      // DN Status comes from backend's delivery_compliance (worst status from group)
       const dnStatus = item.dn_status || 'Pending';
 
       return {
@@ -287,6 +288,31 @@ export default function Dashboard() {
       };
     });
   };
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('id-ID', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+const stackedHeaderLabel = (top: string, bottom: string) => (
+  <span className="flex flex-col leading-tight text-center">
+    <span>{top}</span>
+    <span>{bottom}</span>
+  </span>
+);
 
   const getArrivalStatusBadge = (status?: string) => {
     if (!status || status === "-") {
@@ -338,7 +364,6 @@ export default function Dashboard() {
     );
   };
 
-  // Konfigurasi kolom
   const columns: ColumnConfig[] = [
     {
       key: "no",
@@ -362,44 +387,44 @@ export default function Dashboard() {
     },
     {
       key: "platNumber",
-      label: "Plat Number",
+      label: stackedHeaderLabel("Plat", "Number"),
       sortable: true,
     },
     {
       key: "securityTimeIn",
-      label: stackedHeaderLabel("Security", "Time (In)"),
+      label: stackedHeaderLabel("SCRT", "In"),
       sortable: false,
     },
     {
       key: "securityTimeOut",
-      label: stackedHeaderLabel("Security", "Time (Out)"),
+      label: stackedHeaderLabel("SCRT", "Out"),
       sortable: false,
     },
     {
       key: "securityDuration",
-      label: "Duration",
+      label: "Drtn",
       sortable: false,
       render: (value) => renderDurationCell(value as string | number | null),
     },
     {
       key: "warehouseTimeIn",
-      label: stackedHeaderLabel("Warehouse", "Time (In)"),
+      label: stackedHeaderLabel("WH", "In"),
       sortable: false,
     },
     {
       key: "warehouseTimeOut",
-      label: stackedHeaderLabel("Warehouse", "Time (Out)"),
+      label: stackedHeaderLabel("WH", "Out"),
       sortable: false,
     },
     {
       key: "warehouseDuration",
-      label: "Duration",
+      label: "Drtn",
       sortable: false,
       render: (value) => renderDurationCell(value as string | number | null),
     },
     {
       key: "arrivalStatus",
-      label: "Arrival Status",
+      label: stackedHeaderLabel("Arrival", "Status"),
       sortable: true,
       render: (value) => {
         const badge = getArrivalStatusBadge(value as string);
@@ -437,7 +462,7 @@ export default function Dashboard() {
     },
     {
       key: "quantity_dn",
-      label: "Quantity (DN)",
+      label: "Qty (DN)",
       sortable: true,
       render: (_value, row: any) => {
         const qty = row.quantity_dn || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityDN, 0) || 0;
@@ -446,7 +471,7 @@ export default function Dashboard() {
     },
     {
       key: "quantity_actual",
-      label: "Quantity (Actual)",
+      label: "Qty (Actual)",
       sortable: true,
       render: (_value, row: any) => {
         const qtyDN = row.quantity_dn || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityDN, 0) || 0;
@@ -461,54 +486,6 @@ export default function Dashboard() {
           }`}>
             {qtyActual.toLocaleString()}
           </span>
-        );
-      }
-    },
-    {
-      key: "labelPart",
-      label: "Label Part",
-      sortable: false,
-      render: (value) => {
-        if (!value || value === 'PENDING') return <span className="text-gray-400">-</span>;
-        return (
-          <input
-            type="checkbox"
-            checked={value === 'OK'}
-            disabled
-            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-          />
-        );
-      }
-    },
-    {
-      key: "coaMsds",
-      label: "COA/MSDS",
-      sortable: false,
-      render: (value) => {
-        if (!value || value === 'PENDING') return <span className="text-gray-400">-</span>;
-        return (
-          <input
-            type="checkbox"
-            checked={value === 'OK'}
-            disabled
-            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-          />
-        );
-      }
-    },
-    {
-      key: "packing",
-      label: "Packing",
-      sortable: false,
-      render: (value) => {
-        if (!value || value === 'PENDING') return <span className="text-gray-400">-</span>;
-        return (
-          <input
-            type="checkbox"
-            checked={value === 'OK'}
-            disabled
-            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-          />
         );
       }
     },
@@ -560,163 +537,182 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="overflow-x-hidden space-y-5 sm:space-y-6">
-        <PageMeta
-          title="Dashboard | SPHERE by SANOH Indonesia"
-          description="This is React.js Data Tables Dashboard page for SPHERE by SANOH Indonesia"
-        />
-        <PageBreadcrumb pageTitle="Dashboard" />
-        
-        {/* Summary Statistics Cards Skeleton */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <Skeleton height={16} width="60%" className="mb-3" />
-                  <Skeleton height={32} width="50%" />
-                </div>
-                <div className="rounded-full bg-gray-200 dark:bg-gray-700 w-12 h-12 animate-pulse"></div>
-              </div>
-            </div>
-          ))}
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading dashboard data...</p>
         </div>
-
-        {/* Tables Skeleton */}
-        <SkeletonDataTable rows={5} columns={12} showTitle={true} />
-        <SkeletonDataTable rows={5} columns={12} showTitle={true} />
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-hidden space-y-5 sm:space-y-6">
-      <PageMeta
-        title="Dashboard | SPHERE by SANOH Indonesia"
-        description="This is React.js Data Tables Dashboard page for SPHERE by SANOH Indonesia"
-      />
-      <PageBreadcrumb pageTitle="Dashboard" />
-      
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <div className="flex">
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
-                Error loading dashboard
-              </h3>
-              <div className="mt-2 text-sm text-red-700 dark:text-red-300">
-                {error}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 relative">
+      {/* Floating Theme Toggle Button */}
+      <div className="fixed z-50 bottom-6 right-6">
+        <ThemeTogglerTwo />
+      </div>
+
+      {/* Subtle refresh indicator */}
+      {isRefreshing && (
+        <div className="fixed top-4 right-4 z-40 bg-blue-500 text-white px-3 py-1.5 rounded-full text-xs font-medium shadow-lg flex items-center gap-2">
+          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          Refreshing...
+        </div>
+      )}
+
+      {/* Header with Date and Time */}
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                Arrival Dashboard
+              </h1>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Real-time arrival tracking and monitoring
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                <Calendar className="w-5 h-5" />
+                <span className="text-lg font-semibold">{formatDate(currentTime)}</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                <Clock className="w-5 h-5" />
+                <span className="text-2xl font-bold">{formatTime(currentTime)}</span>
               </div>
             </div>
           </div>
         </div>
-      )}
-      
-      {/* Summary Statistics Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Supplier</p>
-              <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
-                {summaryStats.totalSupplier}
-              </p>
-            </div>
-            <div className="rounded-full bg-blue-100 p-3 dark:bg-blue-900/30">
-              <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-        
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Advance</p>
-              <p className="mt-2 text-3xl font-bold text-blue-600 dark:text-blue-400">
-                {summaryStats.totalAdvance}
-              </p>
-            </div>
-            <div className="rounded-full bg-blue-100 p-3 dark:bg-blue-900/30">
-              <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
-          </div>
-        </div>
-        
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total On Time</p>
-              <p className="mt-2 text-3xl font-bold text-green-600 dark:text-green-400">
-                {summaryStats.totalOnTime}
-              </p>
-            </div>
-            <div className="rounded-full bg-green-100 p-3 dark:bg-green-900/30">
-              <svg className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-        
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Delay</p>
-              <p className="mt-2 text-3xl font-bold text-red-600 dark:text-red-400">
-                {summaryStats.totalDelay}
-              </p>
-            </div>
-            <div className="rounded-full bg-red-100 p-3 dark:bg-red-900/30">
-              <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="space-y-5 sm:space-y-6">
-        <DataTableOne 
-          title="Regular Arrival"
-          data={regularData}
-          columns={columns}
-          defaultItemsPerPage={10}
-          itemsPerPageOptions={[5, 10, 15, 20]}
-          defaultSortKey="no"
-          defaultSortOrder="asc"
-          searchable={true}
-          searchPlaceholder="Search suppliers, DN numbers..."
-        />
-      </div>
-      
-      <div className="space-y-5 sm:space-y-6">
-        <DataTableOne 
-          title="Additional Arrival"
-          data={additionalData}
-          columns={columns}
-          defaultItemsPerPage={10}
-          itemsPerPageOptions={[5, 10, 15, 20]}
-          defaultSortKey="no"
-          defaultSortOrder="asc"
-          searchable={true}
-          searchPlaceholder="Search suppliers, DN numbers..."
-        />
       </div>
 
-      {/* DN List Popup */}
-      {selectedDNData && (
-        <DNListPopup
-          isOpen={isPopupOpen}
-          onClose={() => setIsPopupOpen(false)}
-          dnList={selectedDNData.dnList}
-          supplier={selectedDNData.supplier}
-          platNumber={selectedDNData.platNumber}
-        />
-      )}
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="space-y-5 sm:space-y-6">
+          {error && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+              <div className="flex">
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+                    Error loading dashboard
+                  </h3>
+                  <div className="mt-2 text-sm text-red-700 dark:text-red-300">
+                    {error}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Summary Statistics Cards */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Supplier</p>
+                  <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
+                    {summaryStats.totalSupplier}
+                  </p>
+                </div>
+                <div className="rounded-full bg-blue-100 p-3 dark:bg-blue-900/30">
+                  <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Advance</p>
+                  <p className="mt-2 text-3xl font-bold text-blue-600 dark:text-blue-400">
+                    {summaryStats.totalAdvance}
+                  </p>
+                </div>
+                <div className="rounded-full bg-blue-100 p-3 dark:bg-blue-900/30">
+                  <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total On Time</p>
+                  <p className="mt-2 text-3xl font-bold text-green-600 dark:text-green-400">
+                    {summaryStats.totalOnTime}
+                  </p>
+                </div>
+                <div className="rounded-full bg-green-100 p-3 dark:bg-green-900/30">
+                  <svg className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Delay</p>
+                  <p className="mt-2 text-3xl font-bold text-red-600 dark:text-red-400">
+                    {summaryStats.totalDelay}
+                  </p>
+                </div>
+                <div className="rounded-full bg-red-100 p-3 dark:bg-red-900/30">
+                  <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-5 sm:space-y-6">
+            <DataTableOne 
+              title="Regular Arrival"
+              data={regularData}
+              columns={columns}
+              defaultItemsPerPage={10}
+              itemsPerPageOptions={[5, 10, 15, 20]}
+              defaultSortKey="no"
+              defaultSortOrder="asc"
+              searchable={true}
+              searchPlaceholder="Search suppliers, DN numbers..."
+            />
+          </div>
+          
+          <div className="space-y-5 sm:space-y-6">
+            <DataTableOne 
+              title="Additional Arrival"
+              data={additionalData}
+              columns={columns}
+              defaultItemsPerPage={10}
+              itemsPerPageOptions={[5, 10, 15, 20]}
+              defaultSortKey="no"
+              defaultSortOrder="asc"
+              searchable={true}
+              searchPlaceholder="Search suppliers, DN numbers..."
+            />
+          </div>
+
+          {/* DN List Popup */}
+          {selectedDNData && (
+            <DNListPopup
+              isOpen={isPopupOpen}
+              onClose={() => setIsPopupOpen(false)}
+              dnList={selectedDNData.dnList}
+              supplier={selectedDNData.supplier}
+              platNumber={selectedDNData.platNumber}
+            />
+          )}
+        </div>
+      </div>
     </div>
   );
 }
+

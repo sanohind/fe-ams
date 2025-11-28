@@ -1,13 +1,19 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Table, TableBody, TableCell, TableHeader, TableRow } from "../../../ui/table";
+import { useState, useMemo, type ReactNode } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from "../../../ui/table";
 import DatePicker from "../../../form/date-picker";
 import PaginationWithIcon from "./PaginationWithIcon";
 
 export interface ColumnConfig {
   key: string;
-  label: string;
+  label: ReactNode;
   sortable?: boolean;
   render?: (value: any, row: any, rowIndex?: number) => React.ReactNode;
 }
@@ -24,14 +30,30 @@ interface DataTableOneProps {
   searchPlaceholder?: string;
   datePicker?: boolean;
   onDateChange?: (selectedDates: Date[], dateStr: string) => void;
+  emptyStateMessage?: string;
 }
 
 type SortOrder = "asc" | "desc";
 
-export default function DataTableOne({ data, columns, title, defaultItemsPerPage = 10, itemsPerPageOptions = [5, 8, 10], defaultSortKey = "", defaultSortOrder = "asc", searchable = true, searchPlaceholder = "Search...", datePicker = false, onDateChange }: DataTableOneProps) {
+export default function DataTableOne({
+  data,
+  columns,
+  title,
+  defaultItemsPerPage = 10,
+  itemsPerPageOptions = [5, 8, 10],
+  defaultSortKey = "",
+  defaultSortOrder = "asc",
+  searchable = true,
+  searchPlaceholder = "Search...",
+  datePicker = false,
+  onDateChange,
+  emptyStateMessage = "No data available",
+}: DataTableOneProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(defaultItemsPerPage);
-  const [sortKey, setSortKey] = useState<string>(defaultSortKey || columns[0]?.key || "");
+  const [sortKey, setSortKey] = useState<string>(
+    defaultSortKey || columns[0]?.key || ""
+  );
   const [sortOrder, setSortOrder] = useState<SortOrder>(defaultSortOrder);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -46,7 +68,10 @@ export default function DataTableOne({ data, columns, title, defaultItemsPerPage
 
         return columns.some((col) => {
           const value = getNestedValue(item, col.key);
-          return value && String(value).toLowerCase().includes(searchTerm.toLowerCase());
+          return (
+            value &&
+            String(value).toLowerCase().includes(searchTerm.toLowerCase())
+          );
         });
       })
       .sort((a, b) => {
@@ -57,8 +82,14 @@ export default function DataTableOne({ data, columns, title, defaultItemsPerPage
         const bValue = getNestedValue(b, sortKey);
 
         // Handle numeric values (including currency)
-        const aNum = typeof aValue === "string" ? Number(aValue.replace(/[^0-9.-]/g, "")) : aValue;
-        const bNum = typeof bValue === "string" ? Number(bValue.replace(/[^0-9.-]/g, "")) : bValue;
+        const aNum =
+          typeof aValue === "string"
+            ? Number(aValue.replace(/[^0-9.-]/g, ""))
+            : aValue;
+        const bNum =
+          typeof bValue === "string"
+            ? Number(bValue.replace(/[^0-9.-]/g, ""))
+            : bValue;
 
         if (!isNaN(aNum) && !isNaN(bNum)) {
           return sortOrder === "asc" ? aNum - bNum : bNum - aNum;
@@ -68,7 +99,9 @@ export default function DataTableOne({ data, columns, title, defaultItemsPerPage
         const aStr = String(aValue || "");
         const bStr = String(bValue || "");
 
-        return sortOrder === "asc" ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
+        return sortOrder === "asc"
+          ? aStr.localeCompare(bStr)
+          : bStr.localeCompare(aStr);
       });
   }, [data, columns, sortKey, sortOrder, searchTerm, searchable]);
 
@@ -99,7 +132,9 @@ export default function DataTableOne({ data, columns, title, defaultItemsPerPage
     <div className="overflow-hidden bg-white dark:bg-white/[0.03] rounded-xl">
       {title && (
         <div className="px-4 py-4 border-b border-gray-100 dark:border-white/[0.05]">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            {title}
+          </h3>
         </div>
       )}
       <div className="flex flex-col gap-2 px-4 py-4 border-b-0 border-gray-100 dark:border-white/[0.05] rounded-t-xl sm:flex-row sm:items-center sm:justify-between">
@@ -112,14 +147,31 @@ export default function DataTableOne({ data, columns, title, defaultItemsPerPage
               onChange={(e) => setItemsPerPage(Number(e.target.value))}
             >
               {itemsPerPageOptions.map((value) => (
-                <option key={value} value={value} className="text-gray-500 dark:bg-gray-900 dark:text-gray-400">
+                <option
+                  key={value}
+                  value={value}
+                  className="text-gray-500 dark:bg-gray-900 dark:text-gray-400"
+                >
                   {value}
                 </option>
               ))}
             </select>
             <span className="absolute z-30 text-gray-500 -translate-y-1/2 right-2 top-1/2 dark:text-gray-400">
-              <svg className="stroke-current" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3.8335 5.9165L8.00016 10.0832L12.1668 5.9165" stroke="" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+              <svg
+                className="stroke-current"
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M3.8335 5.9165L8.00016 10.0832L12.1668 5.9165"
+                  stroke=""
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </span>
           </div>
@@ -137,11 +189,18 @@ export default function DataTableOne({ data, columns, title, defaultItemsPerPage
               />
             </div>
           )}
-          
+
           {searchable && (
             <div className="relative">
               <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none left-4 top-1/2 dark:text-gray-400">
-                <svg className="fill-current" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg
+                  className="fill-current"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
                   <path
                     fillRule="evenodd"
                     clipRule="evenodd"
@@ -168,18 +227,53 @@ export default function DataTableOne({ data, columns, title, defaultItemsPerPage
             <TableHeader className="border-t border-gray-100 dark:border-white/[0.05]">
               <TableRow>
                 {columns.map((column) => (
-                  <TableCell key={column.key} isHeader className="px-4 py-3 border border-gray-100 dark:border-white/[0.05]">
-                    <div className={`flex items-center justify-between ${column.sortable !== false ? "cursor-pointer" : ""}`} onClick={() => column.sortable !== false && handleSort(column.key)}>
-                      <p className="font-medium text-gray-700 text-theme-xs dark:text-gray-400">{column.label}</p>
+                  <TableCell
+                    key={column.key}
+                    isHeader
+                    className="px-4 py-3 border border-gray-100 dark:border-white/[0.05]"
+                  >
+                    <div
+                      className={`flex items-center justify-between ${
+                        column.sortable !== false ? "cursor-pointer" : ""
+                      }`}
+                      onClick={() =>
+                        column.sortable !== false && handleSort(column.key)
+                      }
+                    >
+                      <p className="font-medium text-gray-700 text-theme-xs dark:text-gray-400">
+                        {column.label}
+                      </p>
                       {column.sortable !== false && (
                         <button className="flex flex-col gap-0.5">
-                          <svg className={`text-gray-300 dark:text-gray-700  ${sortKey === column.key && sortOrder === "asc" ? "text-brand-500" : ""}`} width="8" height="5" viewBox="0 0 8 5" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <svg
+                            className={`text-gray-300 dark:text-gray-700  ${
+                              sortKey === column.key && sortOrder === "asc"
+                                ? "text-brand-500"
+                                : ""
+                            }`}
+                            width="8"
+                            height="5"
+                            viewBox="0 0 8 5"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
                             <path
                               d="M4.40962 0.585167C4.21057 0.300808 3.78943 0.300807 3.59038 0.585166L1.05071 4.21327C0.81874 4.54466 1.05582 5 1.46033 5H6.53967C6.94418 5 7.18126 4.54466 6.94929 4.21327L4.40962 0.585167Z"
                               fill="currentColor"
                             />
                           </svg>
-                          <svg className={`text-gray-300 dark:text-gray-700  ${sortKey === column.key && sortOrder === "desc" ? "text-brand-500" : ""}`} width="8" height="5" viewBox="0 0 8 5" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <svg
+                            className={`text-gray-300 dark:text-gray-700  ${
+                              sortKey === column.key && sortOrder === "desc"
+                                ? "text-brand-500"
+                                : ""
+                            }`}
+                            width="8"
+                            height="5"
+                            viewBox="0 0 8 5"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
                             <path
                               d="M4.40962 4.41483C4.21057 4.69919 3.78943 4.69919 3.59038 4.41483L1.05071 0.786732C0.81874 0.455343 1.05582 0 1.46033 0H6.53967C6.94418 0 7.18126 0.455342 6.94929 0.786731L4.40962 4.41483Z"
                               fill="currentColor"
@@ -193,15 +287,63 @@ export default function DataTableOne({ data, columns, title, defaultItemsPerPage
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentData.map((item, i) => (
-                <TableRow key={i}>
-                  {columns.map((column) => (
-                    <TableCell key={column.key} className="px-4 py-3 border border-gray-100 dark:border-white/[0.05] whitespace-nowrap">
-                      {column.render ? column.render(getNestedValue(item, column.key), item, startIndex + i) : <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">{getNestedValue(item, column.key)}</span>}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
+              {currentData.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={columns.length}
+                    className="px-4 py-12 border border-gray-100 dark:border-white/[0.05] text-center"
+                  >
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="w-12 h-12 mb-3 text-gray-400 dark:text-gray-600 mx-auto">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          />
+                        </svg>
+                      </div>
+                      <p className="text-gray-500 dark:text-gray-400 font-medium mb-1">
+                        {searchTerm ? "No results found" : "No data available"}
+                      </p>
+                      <p className="text-sm text-gray-400 dark:text-gray-500 max-w-md">
+                        {searchTerm
+                          ? `No data matching "${searchTerm}"`
+                          : emptyStateMessage}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                currentData.map((item, i) => (
+                  <TableRow key={i}>
+                    {columns.map((column) => (
+                      <TableCell
+                        key={column.key}
+                        className="px-4 py-3 border border-gray-100 dark:border-white/[0.05] whitespace-nowrap"
+                      >
+                        {column.render ? (
+                          column.render(
+                            getNestedValue(item, column.key),
+                            item,
+                            startIndex + i
+                          )
+                        ) : (
+                          <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">
+                            {getNestedValue(item, column.key)}
+                          </span>
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
@@ -214,7 +356,11 @@ export default function DataTableOne({ data, columns, title, defaultItemsPerPage
               Showing {startIndex + 1} to {endIndex} of {totalItems} entries
             </p>
           </div>
-          <PaginationWithIcon totalPages={totalPages} initialPage={currentPage} onPageChange={handlePageChange} />
+          <PaginationWithIcon
+            totalPages={totalPages}
+            initialPage={currentPage}
+            onPageChange={handlePageChange}
+          />
         </div>
       </div>
     </div>

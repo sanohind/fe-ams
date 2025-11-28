@@ -16,6 +16,15 @@
   }
 }
 
+@keyframes shrink {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
 @theme {
   --font-*: initial;
   --font-outfit: Outfit, sans-serif;
@@ -685,6 +694,23 @@ span.flatpickr-weekday,
 .fc .fc-timegrid-axis-cushion {
   @apply text-sm font-medium text-gray-500 dark:text-gray-400;
 }
+/* FullCalendar "more" link styling for dark mode */
+.fc .fc-daygrid-more-link {
+  @apply text-gray-700 dark:text-gray-300 font-medium hover:text-brand-500 dark:hover:text-brand-400;
+}
+/* FullCalendar popover styling for dark mode */
+.fc .fc-popover {
+  @apply bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-theme-lg;
+}
+.fc .fc-popover-header {
+  @apply bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-800 dark:text-white;
+}
+.fc .fc-popover-title {
+  @apply text-gray-800 dark:text-white;
+}
+.fc .fc-popover-close {
+  @apply text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300;
+}
 
 .input-date-icon::-webkit-inner-spin-button,
 .input-date-icon::-webkit-calendar-picker-indicator {
@@ -780,6 +806,54 @@ span.flatpickr-weekday,
 }
 .dark .simplebar-scrollbar::before {
   @apply bg-gray-700!;
+}
+
+/* Custom Toast Styling */
+.Toastify__toast {
+  @apply bg-white dark:bg-gray-800 shadow-lg rounded-lg p-0 border-0;
+  padding: 0 !important;
+}
+
+.Toastify__toast--success {
+  @apply bg-white dark:bg-gray-800;
+}
+
+.Toastify__toast--error {
+  @apply bg-white dark:bg-gray-800;
+}
+
+.Toastify__toast--info {
+  @apply bg-white dark:bg-gray-800;
+}
+
+.Toastify__toast--warning {
+  @apply bg-white dark:bg-gray-800;
+}
+
+.Toastify__toast-body {
+  @apply p-4;
+  padding: 1rem !important;
+}
+
+.Toastify__progress-bar {
+  @apply h-1;
+  height: 4px !important;
+}
+
+.Toastify__progress-bar--success {
+  @apply bg-green-500;
+}
+
+.Toastify__progress-bar--error {
+  @apply bg-red-500;
+}
+
+.Toastify__progress-bar--info {
+  @apply bg-blue-500;
+}
+
+.Toastify__progress-bar--warning {
+  @apply bg-amber-500;
 }
 
 .simplebar-scrollbar.simplebar-visible:before {
