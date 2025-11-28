@@ -55,12 +55,12 @@ export default function SupplierContacts() {
     return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
   };
 
-  const columns: ColumnConfig<SupplierContact>[] = useMemo(() => [
+  const columns: ColumnConfig[] = useMemo(() => [
     {
       key: "bp_code",
       label: "Supplier Code",
       sortable: true,
-      render: (value) => (
+      render: (value: string) => (
         <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">
           {value || "-"}
         </span>
@@ -70,7 +70,7 @@ export default function SupplierContacts() {
       key: "bp_name",
       label: "Supplier Name",
       sortable: true,
-      render: (value) => (
+      render: (value: string) => (
         <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">
           {value || "-"}
         </span>
@@ -80,7 +80,7 @@ export default function SupplierContacts() {
       key: "status",
       label: "Status",
       sortable: true,
-      render: (value) => (
+      render: (value: string | null) => (
         <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColor(value)}`}>
           {value || "Unknown"}
         </span>
@@ -90,7 +90,7 @@ export default function SupplierContacts() {
       key: "phone",
       label: "Phone",
       sortable: true,
-      render: (value) => (
+      render: (value: string | null) => (
         <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">
           {value || "-"}
         </span>
@@ -100,7 +100,7 @@ export default function SupplierContacts() {
       key: "fax",
       label: "Fax",
       sortable: true,
-      render: (value) => (
+      render: (value: string | null) => (
         <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">
           {value || "-"}
         </span>
@@ -110,7 +110,7 @@ export default function SupplierContacts() {
       key: "emails",
       label: "Email",
       sortable: false,
-      render: (_value, row) => {
+      render: (_value: any, row: SupplierContact) => {
         if (!row.emails || row.emails.length === 0) {
           return (
             <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">
@@ -136,7 +136,7 @@ export default function SupplierContacts() {
       key: "actions",
       label: "Actions",
       sortable: false,
-      render: (_value, row) => (
+      render: (_value: any, row: SupplierContact) => (
         <div className="flex items-center gap-2">
           <a
             href={row.phone ? `tel:${row.phone}` : undefined}

@@ -1,22 +1,14 @@
-import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { Link, useLocation } from "react-router";
 
 // Assume these icons are imported from an icon library
 import {
-  BoxCubeIcon,
   CalenderIcon,
-  ChatIcon,
-  ChevronDownIcon,
   DocsIcon,
-  GridIcon,
   HorizontaLDots,
   ListIcon,
-  MailIcon,
-  PageIcon,
   PieChartIcon,
-  PlugInIcon,
   TableIcon,
-  TaskIcon,
   UserCircleIcon,
   BoxIcon,
 } from "../icons";
