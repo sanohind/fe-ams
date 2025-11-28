@@ -16,7 +16,7 @@ export default function DataTables() {
       <PageBreadcrumb pageTitle="Data Tables" />
       <div className="space-y-5 sm:space-y-6">
         <ComponentCard title="Data Table 1">
-          <DataTableOne />
+          <DataTableOne data={[]} columns={[]} />
         </ComponentCard>
         <ComponentCard title="Data Table 2">
           <DataTableTwo />

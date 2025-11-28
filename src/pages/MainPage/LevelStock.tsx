@@ -21,7 +21,6 @@ interface StockData {
   allocated: number;
   onorder: number;
   economicstock: number;
-  safety_stock: number;
   min_stock: number;
   max_stock: number;
   unit: string;
@@ -45,7 +44,6 @@ const calculateAvailable = (onhand: number, allocated: number): number => {
 const getStockStatus = (
   onhand: number,
   min_stock: number,
-  safety_stock: number,
   max_stock: number
 ): { status: string; color: string } => {
   if (onhand < min_stock) {
@@ -81,8 +79,8 @@ const useLevelStockData = () => {
         setLoading(true);
         setError(null);
         const res = await apiService.getStockLevels({ per_page: 100 });
-        if (res.success && res.data?.stocks) {
-          const mapped: StockData[] = res.data.stocks.map((s: any) => ({
+        if (res.success && (res.data as any)?.stocks) {
+          const mapped: StockData[] = ((res.data as any).stocks as any[]).map((s: any) => ({
             warehouse: s.warehouse,
             partno: s.part_no ?? s.partno,
             desc: s.description ?? s.desc,
@@ -97,7 +95,6 @@ const useLevelStockData = () => {
             allocated: Number(s.allocated ?? 0),
             onorder: Number(s.onorder ?? 0),
             economicstock: Number(s.economic_stock ?? s.economicstock ?? 0),
-            safety_stock: Number(s.safety_stock ?? 0),
             min_stock: Number(s.min_stock ?? 0),
             max_stock: Number(s.max_stock ?? 0),
             unit: s.unit,
@@ -122,7 +119,6 @@ const useLevelStockData = () => {
       const { status, color } = getStockStatus(
         item.onhand,
         item.min_stock,
-        item.safety_stock,
         item.max_stock
       );
       const reorder_qty = calculateReorderQty(item.onhand, item.min_stock, item.max_stock);
@@ -174,11 +170,6 @@ const columns: ColumnConfig[] = [
     sortable: true,
   },
   {
-    key: "safety_stock",
-    label: "Safety",
-    sortable: true,
-  },
-  {
     key: "max_stock",
     label: "Max",
     sortable: true,
@@ -196,9 +187,7 @@ const columns: ColumnConfig[] = [
 ];
 
   // Hitung summary statistics
-  const totalParts = enhancedStockData.length;
   const criticalParts = enhancedStockData.filter(item => item.status === "Critical").length;
-  const lowParts = enhancedStockData.filter(item => item.status === "Low").length;
   const overstockParts = enhancedStockData.filter(item => item.status === "Overstock").length;
   const normalParts = enhancedStockData.filter(item => item.status === "Normal").length;
 

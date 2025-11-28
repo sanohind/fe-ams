@@ -49,9 +49,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await apiService.getMe();
       console.log('Login - /user API response:', response);
-      if (response.success && response.data?.user) {
-        console.log('Login - Setting user from API:', response.data.user);
-        setUser(response.data.user);
+      if (response.success && (response.data as any)?.user) {
+        console.log('Login - Setting user from API:', (response.data as any).user);
+        setUser((response.data as any).user);
       } else {
         console.log('Login - No user data in response:', response);
       }
@@ -165,9 +165,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             const response = await apiService.getMe();
             console.log('/user API response:', response);
-            if (response.success && response.data?.user) {
-              console.log('Setting user from API:', response.data.user);
-              setUser(response.data.user);
+            if (response.success && (response.data as any)?.user) {
+              console.log('Setting user from API:', (response.data as any).user);
+              setUser((response.data as any).user);
             } else {
               console.log('No user data in response:', response);
               // If no user data, clear token

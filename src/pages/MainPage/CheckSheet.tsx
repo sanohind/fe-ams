@@ -30,15 +30,13 @@ export default function CheckSheet() {
   const [data, setData] = useState<CheckSheetData[]>([]);
   const [selectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      setError(null);
       const res = await apiService.getCheckSheetList(selectedDate);
       if (res.success) {
-        const arrivals = (res.data.arrivals || []) as any[];
+        const arrivals = ((res.data as any)?.arrivals || []) as any[];
         const rows: CheckSheetData[] = [];
         let counter = 1;
         arrivals.forEach((g: any) => {
@@ -59,11 +57,9 @@ export default function CheckSheet() {
           });
         });
         setData(rows);
-      } else {
-        setError(res.message || 'Failed to fetch data');
       }
     } catch (e: any) {
-      setError(e.message || 'Failed to fetch data');
+      console.error('Failed to fetch data:', e);
     } finally {
       setLoading(false);
     }
@@ -83,12 +79,6 @@ export default function CheckSheet() {
     if (!row) return;
 
     const nextValue = !row[field];
-    // Map field to API keys
-    const payloadMap: any = {
-      check_labelPort: 'label_part',
-      check_COA_MSDS: 'coa_msds',
-      check_packing_label: 'packing_condition',
-    };
 
     const body = {
       arrival_id: row.arrival_id,
@@ -151,7 +141,7 @@ export default function CheckSheet() {
       key: "check_labelPort",
       label: "Label Port",
       sortable: true,
-      render: (value: boolean, row: CheckSheetData, rowIndex: number = 0) => (
+      render: (value: boolean, _row: CheckSheetData, rowIndex: number = 0) => (
         <div className="flex justify-center">
           <input
             type="checkbox"
@@ -166,7 +156,7 @@ export default function CheckSheet() {
       key: "check_COA_MSDS",
       label: "COA/MSDS",
       sortable: true,
-      render: (value: boolean, row: CheckSheetData, rowIndex: number = 0) => (
+      render: (value: boolean, _row: CheckSheetData, rowIndex: number = 0) => (
         <div className="flex justify-center">
           <input
             type="checkbox"
@@ -181,7 +171,7 @@ export default function CheckSheet() {
       key: "check_packing_label",
       label: "Packing Label",
       sortable: true,
-      render: (value: boolean, row: CheckSheetData, rowIndex: number = 0) => (
+      render: (value: boolean, _row: CheckSheetData, rowIndex: number = 0) => (
         <div className="flex justify-center">
           <input
             type="checkbox"
