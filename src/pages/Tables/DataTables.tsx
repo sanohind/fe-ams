@@ -22,7 +22,15 @@ export default function DataTables() {
           <DataTableTwo />
         </ComponentCard>
         <ComponentCard title="Data Table 3">
-          <DataTableThree />
+          <DataTableThree 
+            data={[]} 
+            columns={[]}
+            defaultItemsPerPage={10}
+            itemsPerPageOptions={[10, 20, 50]}
+            searchable={true}
+            searchPlaceholder="Search..."
+            emptyStateMessage="No data available"
+          />
         </ComponentCard>
       </div>
     </>
