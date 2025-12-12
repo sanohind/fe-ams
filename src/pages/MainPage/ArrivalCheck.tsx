@@ -4,7 +4,7 @@ import PageMeta from "../../components/common/PageMeta";
 import DataTableOne from "../../components/tables/DataTables/TableOne/DataTableOne";
 import { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
 import ConfirmationPopup from "../../components/popups/ConfirmationPopup";
-import { SkeletonDataTable } from "../../components/ui/skeleton/Skeleton";
+import { SkeletonArrivalCheck } from "../../components/ui/skeleton/Skeleton";
 import { useToast } from "../../hooks/useToast";
 import apiService from "../../services/api";
 
@@ -163,7 +163,7 @@ export default function ArrivalCheck() {
       sortable: true,
       render: (_value: any, row: ArrivalRow) => (
         <div className="flex items-center gap-2">
-          <span className="text-gray-900 dark:text-white">{row.supplier}</span>
+          <span className="text-gray-900 dark:text-white text-theme-sm">{row.supplier}</span>
           <span
             className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
               row.arrivalType === "additional"
@@ -271,21 +271,21 @@ export default function ArrivalCheck() {
           </div>
         )}
 
-        {loading ? (
-          <SkeletonDataTable rows={5} columns={5} showTitle={true} />
-        ) : (
-          <DataTableOne
-            title={isCheckinTab ? "Driver Check In" : "Driver Check Out"}
-            data={rows}
-            columns={columns}
-            defaultItemsPerPage={10}
-            itemsPerPageOptions={[5, 10, 15, 20]}
-            defaultSortKey="no"
-            defaultSortOrder="asc"
-            searchable={true}
-            searchPlaceholder={searchPlaceholder}
-          />
-        )}
+{loading ? (
+  <SkeletonArrivalCheck />
+) : (
+  <DataTableOne
+    title={isCheckinTab ? "Driver Check In" : "Driver Check Out"}
+    data={rows}
+    columns={columns}
+    defaultItemsPerPage={10}
+    itemsPerPageOptions={[5, 10, 15, 20]}
+    defaultSortKey="no"
+    defaultSortOrder="asc"
+    searchable={true}
+    searchPlaceholder={searchPlaceholder}
+  />
+)}
       </div>
 
       {/* Confirmation Modal */}

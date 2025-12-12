@@ -1,5 +1,5 @@
 // API Service for AMS Frontend
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8002/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://be-ams.ns1.sanoh.co.id/api';
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -40,8 +40,11 @@ class ApiService {
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
     
+    // Don't set Content-Type if body is FormData (let browser handle it)
+    const isFormData = options.body instanceof FormData;
+    
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       'Accept': 'application/json',
       ...(options.headers as Record<string, string>),
     };
@@ -371,6 +374,16 @@ class ApiService {
     });
   }
 
+  async importArrivalScheduleFromExcel(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return this.request('/arrival-manage/import-excel', {
+      method: 'POST',
+      body: formData,
+    });
+  }
+
   // Arrival Check API
   async checkInDriver(data: {
     arrival_id: number;
@@ -569,6 +582,113 @@ class ApiService {
   async getSupplierContacts(search?: string) {
     const query = search ? `?search=${encodeURIComponent(search)}` : '';
     return this.request(`/supplier-contacts${query}`);
+  }
+
+  // Daily Report API
+  async downloadDailyReport(date: string) {
+    const token = this.token || localStorage.getItem('auth_token');
+    const url = `${this.baseURL}/daily-report/download?date=${encodeURIComponent(date)}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+        'Accept': 'application/pdf',
+      },
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to download daily report';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch (e) {
+        errorMessage = `Failed to download daily report: ${response.status} ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response;
+  }
+
+  // Delivery Performance API
+  async getDeliveryPerformance(params?: {
+    month?: number;
+    year?: number;
+    limit?: number;
+    category?: string;
+    grade?: string;
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+    
+    const queryString = queryParams.toString();
+    return this.request(`/delivery-performance${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getDeliveryPerformanceDetail(bpCode: string, params?: {
+    month?: number;
+    year?: number;
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+    
+    const queryString = queryParams.toString();
+    return this.request(`/delivery-performance/${bpCode}${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getDeliveryPerformanceTopPerformers(params?: {
+    month?: number;
+    year?: number;
+    limit?: number;
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+    
+    const queryString = queryParams.toString();
+    return this.request(`/delivery-performance/top-performers${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getDeliveryPerformanceStatistics(params?: {
+    month?: number;
+    year?: number;
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+    
+    const queryString = queryParams.toString();
+    return this.request(`/delivery-performance/statistics${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async calculateDeliveryPerformance(month: number, year: number) {
+    return this.request('/delivery-performance/calculate', {
+      method: 'POST',
+      body: JSON.stringify({ month, year }),
+    });
   }
 }
 

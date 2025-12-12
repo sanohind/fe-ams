@@ -165,7 +165,7 @@ export default function DriverCheck() {
       sortable: true,
       render: (_value: any, row: ArrivalRow) => (
         <div className="flex items-center gap-2">
-          <span className="text-gray-900 dark:text-white">{row.supplier}</span>
+          <span className="text-gray-900 dark:text-white text-theme-sm">{row.supplier}</span>
           <span
             className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
               row.arrivalType === "additional"

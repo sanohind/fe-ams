@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import DataTableOne, { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
-import { SkeletonDataTable } from "../../components/ui/skeleton/Skeleton";
+import { SkeletonSupplierContacts } from "../../components/ui/skeleton/Skeleton";
 import apiService from "../../services/api";
 
 interface SupplierContact {
@@ -163,35 +163,35 @@ export default function SupplierContacts() {
     },
   ], []);
 
-  return (
-    <>
-      <PageMeta
-        title="Supplier Contact | SPHERE by SANOH Indonesia"
-        description="Supplier contact list from SCM"
-      />
-      <PageBreadcrumb pageTitle="Supplier Contacts" />
+return (
+  <>
+    <PageMeta
+      title="Supplier Contact | SPHERE by SANOH Indonesia"
+      description="Supplier contact list from SCM"
+    />
+    <PageBreadcrumb pageTitle="Supplier Contacts" />
 
-      <div className="space-y-5 sm:space-y-6">
-        {loading ? (
-          <SkeletonDataTable rows={5} columns={7} showTitle={true} />
-        ) : (
-          <>
-            {/* Data Table */}
-            <DataTableOne
-              title="Contact List"
-              data={contacts}
-              columns={columns}
-              defaultItemsPerPage={10}
-              itemsPerPageOptions={[5, 10, 15, 20]}
-              defaultSortKey="bp_name"
-              defaultSortOrder="asc"
-              searchable={true}
-              searchPlaceholder="Search suppliers, codes, contacts..."
-            />
-            {error && <div className="text-sm text-red-500">{error}</div>}
-          </>
-        )}
-      </div>
-    </>
-  );
+    <div className="space-y-5 sm:space-y-6">
+      {loading ? (
+        <SkeletonSupplierContacts />
+      ) : (
+        <>
+          {/* Data Table */}
+          <DataTableOne
+            title="Contact List"
+            data={contacts}
+            columns={columns}
+            defaultItemsPerPage={10}
+            itemsPerPageOptions={[5, 10, 15, 20]}
+            defaultSortKey="bp_name"
+            defaultSortOrder="asc"
+            searchable={true}
+            searchPlaceholder="Search suppliers, codes, contacts..."
+          />
+          {error && <div className="text-sm text-red-500">{error}</div>}
+        </>
+      )}
+    </div>
+  </>
+);
 }

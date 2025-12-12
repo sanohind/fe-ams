@@ -13,7 +13,7 @@ import {
   BoxIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
-import { BoltIcon } from "lucide-react";
+import { BoltIcon, TrendingUp } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 type NavItem = {
@@ -72,6 +72,12 @@ const mainPageItems: NavItem[] =[
     name: "Item Scan",
     path: "/item-scan",
     requiredRoles: ['operator', 'superadmin'],
+  },
+  {
+    icon: <TrendingUp size={20} />,
+    name: "Delivery Performance",
+    path: "/delivery-performance",
+    requiredRoles: ['admin', 'superadmin'],
   },
 ]
 

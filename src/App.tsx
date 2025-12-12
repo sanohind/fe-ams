@@ -76,6 +76,8 @@ import ItemScan from "./pages/MainPage/ItemScan";
 import IconGalery from "./pages/MainPage/IconGalery";
 import SupplierContacts from "./pages/MainPage/SupplierContacts";
 import CheckSheetHistory from "./pages/MainPage/CheckSheetHistory";
+import DeliveryPerformance from "./pages/MainPage/DeliveryPerformance";
+import DeliveryPerformanceDetail from "./pages/MainPage/DeliveryPerformanceDetail";
 import DriverCheck from "./pages/PublicPage/DriverCheck";
 import PublicDashboard from "./pages/PublicPage/PublicDashboard";
 
@@ -149,6 +151,16 @@ export default function App() {
             <Route path="/supplier-contacts" element={
               <ProtectedRoute requiredRoles={['admin', 'superadmin', 'operator']}>
                 <SupplierContacts />
+              </ProtectedRoute>
+            } />
+            <Route path="/delivery-performance" element={
+              <ProtectedRoute requiredRoles={['admin', 'superadmin', 'operator']}>
+                <DeliveryPerformance />
+              </ProtectedRoute>
+            } />
+            <Route path="/delivery-performance-detail/:bpCode" element={
+              <ProtectedRoute requiredRoles={['admin', 'superadmin', 'operator']}>
+                <DeliveryPerformanceDetail />
               </ProtectedRoute>
             } />
             <Route path="/icon-galery" element={<IconGalery />} />
