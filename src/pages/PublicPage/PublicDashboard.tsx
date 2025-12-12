@@ -151,8 +151,8 @@ export default function PublicDashboard() {
         setIsRefreshing(true);
       }
       setError(null);
-      
-        const response = await apiService.getDashboardStats(undefined, true);
+
+      const response = await apiService.getDashboardStats(undefined, true);
 
       if (response.success && response.data) {
         const data = response.data as any;
@@ -160,13 +160,13 @@ export default function PublicDashboard() {
         const additional = transformApiDataToDashboard(data.additional_arrivals || []);
         setRegularData(regular);
         setAdditionalData(additional);
-        
+
         const allData = [...regular, ...additional];
         const uniqueSuppliers = new Set(allData.map(item => item.supplier)).size;
         const totalAdvance = allData.filter(item => normalizeArrivalStatus(item.arrivalStatus) === 'advance').length;
         const totalOnTime = allData.filter(item => normalizeArrivalStatus(item.arrivalStatus) === 'on_time').length;
         const totalDelay = allData.filter(item => normalizeArrivalStatus(item.arrivalStatus) === 'delay').length;
-        
+
         setSummaryStats({
           totalSupplier: uniqueSuppliers,
           totalAdvance,
@@ -191,7 +191,7 @@ export default function PublicDashboard() {
   useEffect(() => {
     // Initial load
     fetchDashboardData(true);
-    
+
     // Auto-refresh every 5 minutes (silent refresh - no loading screen)
     const interval = setInterval(() => {
       fetchDashboardData(false);
@@ -202,11 +202,11 @@ export default function PublicDashboard() {
   const handleViewDNList = async (item: DashboardDataItem) => {
     if (item.groupKey) {
       try {
-        const response = await apiService.getDashboardDnDetails({ 
+        const response = await apiService.getDashboardDnDetails({
           group_key: item.groupKey,
           date: new Date().toISOString().split('T')[0]
         }, true);
-        
+
         if (response.success && response.data) {
           const data = response.data as any;
           const dnList = (data.dn_details || []).map((dn: any) => ({
@@ -215,7 +215,7 @@ export default function PublicDashboard() {
             quantityActual: Number(dn.quantity_actual) || 0,
             status: dn.scan_status || 'Pending',
           }));
-          
+
           setSelectedDNData({
             dnList: dnList,
             supplier: item.supplier,
@@ -247,7 +247,7 @@ export default function PublicDashboard() {
       const warehouseTimeIn = item.warehouse_time_in || '-';
       const scheduleTime = item.schedule || '-';
       const arrivalStatus = item.arrival_status || 'pending';
-      
+
       const dnList = (item.dn_list || []).map((dn: any) => ({
         dnNumber: dn.dn_number || dn.dnNumber || '-',
         quantityDN: Number(dn.quantity_dn || dn.quantityDN || 0),
@@ -307,12 +307,12 @@ export default function PublicDashboard() {
     });
   };
 
-const stackedHeaderLabel = (top: string, bottom: string) => (
-  <span className="flex flex-col leading-tight text-center">
-    <span>{top}</span>
-    <span>{bottom}</span>
-  </span>
-);
+  const stackedHeaderLabel = (top: string, bottom: string) => (
+    <span className="flex flex-col leading-tight text-center">
+      <span>{top}</span>
+      <span>{bottom}</span>
+    </span>
+  );
 
   const getArrivalStatusBadge = (status?: string) => {
     if (!status || status === "-") {
@@ -477,13 +477,12 @@ const stackedHeaderLabel = (top: string, bottom: string) => (
         const qtyDN = row.quantity_dn || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityDN, 0) || 0;
         const qtyActual = row.quantity_actual || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityActual, 0) || 0;
         const isMatch = qtyDN === qtyActual;
-        
+
         return (
-          <span className={`font-medium ${
-            isMatch 
-              ? "text-green-600 dark:text-green-400" 
+          <span className={`font-medium ${isMatch
+              ? "text-green-600 dark:text-green-400"
               : "text-red-600 dark:text-red-400"
-          }`}>
+            }`}>
             {qtyActual.toLocaleString()}
           </span>
         );
@@ -499,7 +498,7 @@ const stackedHeaderLabel = (top: string, bottom: string) => (
           "In Progress": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
           "Pending": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
         };
-        
+
         return (
           <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors[value] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"}`}>
             {value}
@@ -520,7 +519,7 @@ const stackedHeaderLabel = (top: string, bottom: string) => (
           "Delay": "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
           "No Show": "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
         };
-        
+
         return (
           <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors[value] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"}`}>
             {value}
@@ -604,76 +603,128 @@ const stackedHeaderLabel = (top: string, bottom: string) => (
               </div>
             </div>
           )}
-          
+
           {/* Summary Statistics Cards */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Total Supplier Card */}
             <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Supplier</p>
-                  <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Total Supplier
+                  </p>
+                  <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
                     {summaryStats.totalSupplier}
                   </p>
                 </div>
-                <div className="rounded-full bg-blue-100 p-3 dark:bg-blue-900/30">
-                  <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                <div className="rounded-lg bg-blue-50 p-2 dark:bg-blue-900/20">
+                  <svg
+                    className="h-5 w-5 text-blue-600 dark:text-blue-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
                   </svg>
                 </div>
               </div>
             </div>
-            
+
+            {/* Total Advance Card */}
             <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Advance</p>
-                  <p className="mt-2 text-3xl font-bold text-blue-600 dark:text-blue-400">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Total Advance
+                  </p>
+                  <p className="mt-1 text-2xl font-bold text-blue-600 dark:text-blue-400">
                     {summaryStats.totalAdvance}
                   </p>
                 </div>
-                <div className="rounded-full bg-blue-100 p-3 dark:bg-blue-900/30">
-                  <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                <div className="rounded-lg bg-blue-50 p-2 dark:bg-blue-900/20">
+                  <svg
+                    className="h-5 w-5 text-blue-600 dark:text-blue-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                    />
                   </svg>
                 </div>
               </div>
             </div>
-            
+
+            {/* Total On Time Card */}
             <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total On Time</p>
-                  <p className="mt-2 text-3xl font-bold text-green-600 dark:text-green-400">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Total On Time
+                  </p>
+                  <p className="mt-1 text-2xl font-bold text-green-600 dark:text-green-400">
                     {summaryStats.totalOnTime}
                   </p>
                 </div>
-                <div className="rounded-full bg-green-100 p-3 dark:bg-green-900/30">
-                  <svg className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <div className="rounded-lg bg-green-50 p-2 dark:bg-green-900/20">
+                  <svg
+                    className="h-5 w-5 text-green-600 dark:text-green-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                 </div>
               </div>
             </div>
-            
+
+            {/* Total Delay Card */}
             <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Delay</p>
-                  <p className="mt-2 text-3xl font-bold text-red-600 dark:text-red-400">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Total Delay
+                  </p>
+                  <p className="mt-1 text-2xl font-bold text-red-600 dark:text-red-400">
                     {summaryStats.totalDelay}
                   </p>
                 </div>
-                <div className="rounded-full bg-red-100 p-3 dark:bg-red-900/30">
-                  <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <div className="rounded-lg bg-red-50 p-2 dark:bg-red-900/20">
+                  <svg
+                    className="h-5 w-5 text-red-600 dark:text-red-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                 </div>
               </div>
             </div>
           </div>
-          
+
           <div className="space-y-5 sm:space-y-6">
-            <DataTableOne 
+            <DataTableOne
               title="Regular Arrival"
               data={regularData}
               columns={columns}
@@ -685,9 +736,9 @@ const stackedHeaderLabel = (top: string, bottom: string) => (
               searchPlaceholder="Search suppliers, DN numbers..."
             />
           </div>
-          
+
           <div className="space-y-5 sm:space-y-6">
-            <DataTableOne 
+            <DataTableOne
               title="Additional Arrival"
               data={additionalData}
               columns={columns}

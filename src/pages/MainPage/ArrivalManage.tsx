@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { Plus, Edit, Trash2 } from "lucide-react";
+import Button from "../../components/ui/button/Button";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import DataTableOne from "../../components/tables/DataTables/TableOne/DataTableOne";
 import { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
-import { SkeletonDataTable } from "../../components/ui/skeleton/Skeleton";
+import { SkeletonArrivalManage } from "../../components/ui/skeleton/Skeleton";
 import { useToast } from "../../hooks/useToast";
 import apiService from "../../services/api";
 import ConfirmationPopup from "../../components/popups/ConfirmationPopup";
@@ -16,6 +17,7 @@ type ScheduleType = 'regular' | 'additional';
 interface ArrivalManageData {
   id: number;
   bp_code: string;
+  bp_name?: string; // Supplier name
   arrival_type: ScheduleType;
   arrival_time: string; // HH:mm:ss
   departure_time?: string | null;
@@ -80,6 +82,11 @@ export default function ArrivalManage() {
     navigate("/add-arrival");
   };
 
+  const capitalizeDay = (day: string | null) => {
+    if (!day) return '-';
+    return day.charAt(0).toUpperCase() + day.slice(1);
+  };
+
   const columns: ColumnConfig[] = useMemo(() => [
     {
       key: "id",
@@ -92,6 +99,14 @@ export default function ArrivalManage() {
       sortable: true,
     },
     {
+      key: "bp_name",
+      label: "Supplier",
+      sortable: true,
+      render: (value: string) => {
+        return <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">{value || '-'}</span>;
+      },
+    },
+    {
       key: "arrival_time",
       label: "Arrival",
       sortable: true,
@@ -100,6 +115,9 @@ export default function ArrivalManage() {
       key: "day_name",
       label: "Day",
       sortable: true,
+      render: (value: string) => {
+        return <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">{capitalizeDay(value)}</span>;
+      },
     },
     {
       key: "dock",
@@ -117,27 +135,6 @@ export default function ArrivalManage() {
         };
         const label = value.charAt(0).toUpperCase() + value.slice(1);
         return <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${colors[value] || "bg-gray-100 text-gray-800"}`}>{label}</span>;
-      },
-    },
-    {
-      key: "created_at",
-      label: "Created Date",
-      sortable: true,
-      render: (value: string) => {
-        if (!value) return <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">-</span>;
-        try {
-          const date = new Date(value);
-          const formatted = date.toLocaleDateString('id-ID', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          });
-          return <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">{formatted}</span>;
-        } catch {
-          return <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">{value}</span>;
-        }
       },
     },
     {
@@ -166,20 +163,20 @@ export default function ArrivalManage() {
       label: "Actions",
       sortable: false,
       render: (_value: unknown, row: ArrivalManageData) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={() => handleEdit(row.id)}
-            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors"
+            className="inline-flex items-center justify-center p-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+            title="Edit"
           >
-            <Edit className="w-3 h-3" />
-            Edit
+            <Edit className="w-4 h-4" />
           </button>
           <button
             onClick={() => setDeleteTarget(row)}
-            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+            className="inline-flex items-center justify-center p-1.5 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+            title="Delete"
           >
-            <Trash2 className="w-3 h-3" />
-            Delete
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       ),
@@ -192,37 +189,35 @@ export default function ArrivalManage() {
       <PageBreadcrumb pageTitle="Arrival Management" />
 
       <div className="space-y-5 sm:space-y-6">
-        {/* Header with Add Button */}
-        <div className="flex justify-between items-center">
-          {loading ? (
-            <div className="h-10 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          ) : (
-            <button onClick={handleAddNew} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
-              <Plus className="w-4 h-4" />
-              Add New Arrival
-            </button>
-          )}
-        </div>
-
-        {loading ? (
-          <SkeletonDataTable rows={5} columns={8} showTitle={true} />
-        ) : (
-          <>
-            {/* Data Table */}
-            <DataTableOne
-              title="Arrival Schedule List"
-              data={data}
-              columns={columns}
-              defaultItemsPerPage={10}
-              itemsPerPageOptions={[5, 10, 15, 20]}
-              defaultSortKey="id"
-              defaultSortOrder="asc"
-              searchable={true}
-              searchPlaceholder="Search suppliers, schedules, docks..."
-            />
-            {error && <div className="text-sm text-red-500">{error}</div>}
-          </>
-        )}
+{loading ? (
+  <SkeletonArrivalManage />
+) : (
+  <>
+    {/* Data Table with Action Button */}
+    <DataTableOne
+      title="Arrival Schedule List"
+      data={data}
+      columns={columns}
+      defaultItemsPerPage={10}
+      itemsPerPageOptions={[5, 10, 15, 20]}
+      defaultSortKey="id"
+      defaultSortOrder="asc"
+      searchable={true}
+      searchPlaceholder="Search suppliers, schedules, docks..."
+      actionButton={
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={handleAddNew}
+        >
+          <Plus className="w-4 h-4" />
+          Add New Arrival
+        </Button>
+      }
+    />
+    {error && <div className="text-sm text-red-500">{error}</div>}
+  </>
+)}
       </div>
       <ConfirmationPopup
         isOpen={!!deleteTarget}
@@ -234,7 +229,7 @@ export default function ArrivalManage() {
         title="Delete Arrival Schedule"
         message={
           deleteTarget
-            ? `Hapus jadwal kedatangan untuk supplier ${deleteTarget.bp_code} pada ${deleteTarget.day_name ?? deleteTarget.schedule_date ?? '-'} jam ${deleteTarget.arrival_time}?`
+            ? `Hapus jadwal kedatangan untuk supplier ${deleteTarget.bp_name} pada ${deleteTarget.day_name ?? deleteTarget.schedule_date ?? '-'} jam ${deleteTarget.arrival_time}?`
             : ""
         }
         confirmText={isDeleting ? "Deleting..." : "Delete"}

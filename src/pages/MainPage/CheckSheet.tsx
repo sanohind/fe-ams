@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { History } from "lucide-react";
+import Button from "../../components/ui/button/Button";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import DataTableOne from "../../components/tables/DataTables/TableOne/DataTableOne";
 import { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
-import { SkeletonDataTable } from "../../components/ui/skeleton/Skeleton";
+import { SkeletonCheckSheet } from "../../components/ui/skeleton/Skeleton";
 import { useToast } from "../../hooks/useToast";
 import apiService from "../../services/api";
 
@@ -192,36 +193,32 @@ export default function CheckSheet() {
       />
       <PageBreadcrumb pageTitle="Check Sheet" />
       <div className="space-y-5 sm:space-y-6">
-        {/* Header with History Button */}
-        <div className="flex justify-end items-center mb-4">
-          {loading ? (
-            <div className="h-10 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          ) : (
-            <button
-              onClick={() => navigate("/check-sheet-history")}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-            >
-              <History className="w-4 h-4" />
-              View History
-            </button>
-          )}
-        </div>
-        {loading ? (
-          <SkeletonDataTable rows={5} columns={11} showTitle={true} />
-        ) : (
-          <DataTableOne
-            title="Check Sheet Data"
-            data={data}
-            columns={columns}
-            defaultItemsPerPage={10}
-            itemsPerPageOptions={[5, 10, 15, 20]}
-            defaultSortKey="no"
-            defaultSortOrder="asc"
-            searchable={true}
-            searchPlaceholder="Search DN numbers, supplier, driver..."
-            emptyStateMessage="There are no suppliers who have performed a warehouse check-in today. The data will appear automatically once a supplier completes the check-in."
-          />
-        )}
+       {loading ? (
+  <SkeletonCheckSheet />
+) : (
+  <DataTableOne
+    title="Check Sheet Data"
+    data={data}
+    columns={columns}
+    defaultItemsPerPage={10}
+    itemsPerPageOptions={[5, 10, 15, 20]}
+    defaultSortKey="no"
+    defaultSortOrder="asc"
+    searchable={true}
+    searchPlaceholder="Search DN numbers, supplier, driver..."
+    emptyStateMessage="There are no suppliers who have performed a warehouse check-in today. The data will appear automatically once a supplier completes the check-in."
+    actionButton={
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => navigate("/check-sheet-history")}
+      >
+        <History className="w-4 h-4" />
+        View History
+      </Button>
+    }
+  />
+)}
       </div>
     </>
   );

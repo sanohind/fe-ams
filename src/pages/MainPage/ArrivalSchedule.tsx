@@ -10,8 +10,9 @@ import PageMeta from "../../components/common/PageMeta";
 import DataTableOne, { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
 import DNListPopup from "../../components/popups/DNListPopup";
 import DatePicker from "../../components/form/date-picker";
-import { SkeletonDataTable } from "../../components/ui/skeleton/Skeleton";
+import { SkeletonArrivalSchedule } from "../../components/ui/skeleton/Skeleton";
 import apiService from "../../services/api";
+import Button from "../../components/ui/button/Button";
 
 // Interface untuk DN Item
 interface DNItem {
@@ -166,6 +167,40 @@ export default function ArrivalSchedule() {
   const calendarRef = useRef<FullCalendar>(null);
   const [selectedCalendarEvent, setSelectedCalendarEvent] = useState<CalendarEvent | null>(null);
   const [eventPopoverPosition, setEventPopoverPosition] = useState<{ x: number; y: number } | null>(null);
+  const [downloadingReport, setDownloadingReport] = useState(false);
+
+  // Check if selected date is not today
+  const isNotToday = () => {
+    const today = new Date().toISOString().split('T')[0];
+    return selectedDate !== today;
+  };
+
+  // Download daily report
+  const handleDownloadReport = async () => {
+    try {
+      setDownloadingReport(true);
+      const response = await apiService.downloadDailyReport(selectedDate);
+
+      if (!response.ok) {
+        throw new Error('Failed to download report');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `daily-report-${selectedDate}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Error downloading report:', err);
+      alert('Failed to download daily report. Please try again.');
+    } finally {
+      setDownloadingReport(false);
+    }
+  };
 
   // Fetch dashboard data from API
   useEffect(() => {
@@ -173,7 +208,7 @@ export default function ArrivalSchedule() {
       try {
         setLoading(true);
         setError(null);
-        
+
         // Fetch schedule data for selected date
         const response = await apiService.getScheduleData(selectedDate);
 
@@ -204,7 +239,7 @@ export default function ArrivalSchedule() {
       try {
         setCalendarLoading(true);
         const response = await apiService.getArrivalScheduleForCalendar();
-        
+
         if (response.success && response.data) {
           const schedules = response.data as ArrivalScheduleData[];
           const events = transformSchedulesToCalendarEvents(schedules);
@@ -244,7 +279,7 @@ export default function ArrivalSchedule() {
         if (dayOfWeek !== undefined) {
           // Generate recurring events for the next 3 months
           let currentDate = new Date(startOfMonth);
-          
+
           // Find first occurrence of the day
           while (currentDate.getDay() !== dayOfWeek && currentDate <= endOfMonth) {
             currentDate.setDate(currentDate.getDate() + 1);
@@ -329,11 +364,11 @@ export default function ArrivalSchedule() {
     // Fetch DN details from API if group_key is available
     if (item.groupKey) {
       try {
-        const response = await apiService.getDashboardDnDetails({ 
+        const response = await apiService.getDashboardDnDetails({
           group_key: item.groupKey,
           date: selectedDate
         });
-        
+
         if (response.success && response.data) {
           const data = response.data as any;
           const dnList = (data.dn_details || []).map((dn: any) => ({
@@ -342,7 +377,7 @@ export default function ArrivalSchedule() {
             quantityActual: Number(dn.quantity_actual) || 0,
             status: dn.scan_status || 'Pending',
           }));
-          
+
           setSelectedDNData({
             dnList: dnList,
             supplier: item.supplier,
@@ -376,11 +411,11 @@ export default function ArrivalSchedule() {
     return apiData.map((item, index) => {
       const warehouseTimeIn = item.warehouse_time_in || '-';
       const scheduleTime = item.schedule || '-';
-      
+
       // Use arrival_status directly from backend (from arrival_transactions.status column)
       // Frontend should not calculate status - it's determined by backend logic
       const arrivalStatus = item.arrival_status || 'pending';
-      
+
       const dnList = (item.dn_list || []).map((dn: any) => ({
         dnNumber: dn.dn_number || dn.dnNumber || '-',
         quantityDN: Number(dn.quantity_dn || dn.quantityDN || 0),
@@ -391,7 +426,7 @@ export default function ArrivalSchedule() {
       const scanStatus = item.scan_status || 'Pending';
       const expectedDnCount = item.dn_count ?? item.expected_dn_count;
       const deliveredDnCount = item.dn_delivered_count ?? dnList.length;
-      
+
       // DN Status comes from backend's delivery_compliance (worst status from group)
       const dnStatus = item.dn_status || 'Pending';
 
@@ -588,13 +623,12 @@ export default function ArrivalSchedule() {
         const qtyDN = row.quantity_dn || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityDN, 0) || 0;
         const qtyActual = row.quantity_actual || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityActual, 0) || 0;
         const isMatch = qtyDN === qtyActual;
-        
+
         return (
-          <span className={`font-medium ${
-            isMatch 
-              ? "text-green-600 dark:text-green-400" 
+          <span className={`font-medium ${isMatch
+              ? "text-green-600 dark:text-green-400"
               : "text-red-600 dark:text-red-400"
-          }`}>
+            }`}>
             {qtyActual.toLocaleString()}
           </span>
         );
@@ -658,7 +692,7 @@ export default function ArrivalSchedule() {
           "In Progress": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
           "Pending": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
         };
-        
+
         return (
           <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors[value] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"}`}>
             {value}
@@ -679,7 +713,7 @@ export default function ArrivalSchedule() {
           "Delay": "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
           "No Show": "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
         };
-        
+
         return (
           <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors[value] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"}`}>
             {value}
@@ -694,29 +728,18 @@ export default function ArrivalSchedule() {
     },
   ];
 
-  if (loading) {
-    return (
-      <div className="overflow-x-hidden space-y-5 sm:space-y-6">
-        <PageMeta
-          title="Arrival Schedule | SPHERE by SANOH Indonesia"
-          description="This is React.js Arrival Schedule page for SPHERE by SANOH Indonesia"
-        />
-        <PageBreadcrumb pageTitle="Arrival Schedule" />
-        
-        {/* Date Picker Skeleton */}
-        <div className="flex justify-end mb-4">
-          <div className="flex items-center gap-4">
-            <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-            <div className="w-full sm:w-[250px] h-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          </div>
-        </div>
-
-        {/* Tables Skeleton */}
-        <SkeletonDataTable rows={5} columns={12} showTitle={true} />
-        <SkeletonDataTable rows={5} columns={12} showTitle={true} />
-      </div>
-    );
-  }
+if (loading) {
+  return (
+    <div className="overflow-x-hidden space-y-5 sm:space-y-6">
+      <PageMeta
+        title="Arrival Schedule | SPHERE by SANOH Indonesia"
+        description="This is React.js Arrival Schedule page for SPHERE by SANOH Indonesia"
+      />
+      <PageBreadcrumb pageTitle="Arrival Schedule" />
+      <SkeletonArrivalSchedule />
+    </div>
+  );
+}
 
   return (
     <div className="overflow-x-hidden space-y-5 sm:space-y-6">
@@ -725,7 +748,7 @@ export default function ArrivalSchedule() {
         description="This is React.js Arrival Schedule page for SPHERE by SANOH Indonesia"
       />
       <PageBreadcrumb pageTitle="Arrival Schedule" />
-      
+
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
           <div className="flex">
@@ -741,8 +764,8 @@ export default function ArrivalSchedule() {
         </div>
       )}
 
-      {/* Date Picker */}
-      <div className="flex justify-end mb-4">
+      {/* Date Picker and Download Button */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
         <div className="flex items-center gap-4">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Select Date:
@@ -772,10 +795,37 @@ export default function ArrivalSchedule() {
             />
           </div>
         </div>
+
+        {/* Download Daily Report Button */}
+        {isNotToday() && (
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={handleDownloadReport}
+    disabled={downloadingReport}
+  >
+    {downloadingReport ? "Downloading..." : "Download Report"}
+    <svg
+      className="fill-current"
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M10.0018 14.083C9.7866 14.083 9.59255 13.9924 9.45578 13.8472L5.61586 10.0097C5.32288 9.71688 5.32272 9.242 5.61552 8.94902C5.90832 8.65603 6.3832 8.65588 6.67618 8.94868L9.25182 11.5227L9.25182 3.33301C9.25182 2.91879 9.5876 2.58301 10.0018 2.58301C10.416 2.58301 10.7518 2.91879 10.7518 3.33301L10.7518 11.5193L13.3242 8.94866C13.6172 8.65587 14.0921 8.65604 14.3849 8.94903C14.6777 9.24203 14.6775 9.7169 14.3845 10.0097L10.5761 13.8154C10.4385 13.979 10.2323 14.083 10.0018 14.083ZM4.0835 13.333C4.0835 12.9188 3.74771 12.583 3.3335 12.583C2.91928 12.583 2.5835 12.9188 2.5835 13.333V15.1663C2.5835 16.409 3.59086 17.4163 4.8335 17.4163H15.1676C16.4102 17.4163 17.4176 16.409 17.4176 15.1663V13.333C17.4176 12.9188 17.0818 12.583 16.6676 12.583C16.2533 12.583 15.9176 12.9188 15.9176 13.333V15.1663C15.9176 15.5806 15.5818 15.9163 15.1676 15.9163H4.8335C4.41928 15.9163 4.0835 15.5806 4.0835 15.1663V13.333Z"
+        fill="currentColor"
+      />
+    </svg>
+  </Button>
+)}
       </div>
-      
+
       <div className="space-y-5 sm:space-y-6">
-        <DataTableOne 
+        <DataTableOne
           title="Regular Arrival"
           data={regularData}
           columns={columns}
@@ -787,9 +837,9 @@ export default function ArrivalSchedule() {
           searchPlaceholder="Search suppliers, DN numbers..."
         />
       </div>
-      
+
       <div className="space-y-5 sm:space-y-6">
-        <DataTableOne 
+        <DataTableOne
           title="Additional Arrival"
           data={additionalData}
           columns={columns}
@@ -813,7 +863,7 @@ export default function ArrivalSchedule() {
               View all supplier arrival schedules. Regular schedules are shown in blue, additional schedules are shown in green.
             </p>
           </div>
-          
+
           {calendarLoading ? (
             <div className="flex items-center justify-center p-12">
               <div className="text-center">
@@ -848,7 +898,7 @@ export default function ArrivalSchedule() {
                   moreLinkClick="popover"
                 />
               </div>
-              
+
               {/* Legend */}
               <div className="mt-6 flex flex-wrap items-center gap-4 pt-4 border-t border-gray-200 dark:border-gray-800">
                 <div className="flex items-center gap-2">
@@ -868,14 +918,14 @@ export default function ArrivalSchedule() {
       {/* Event Details Popover */}
       {selectedCalendarEvent && (
         <>
-          <div 
-            className="fixed inset-0 z-40" 
+          <div
+            className="fixed inset-0 z-40"
             onClick={() => {
               setSelectedCalendarEvent(null);
               setEventPopoverPosition(null);
             }}
           />
-          <div 
+          <div
             className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 max-w-sm"
             style={{
               top: eventPopoverPosition?.y || 0,
@@ -898,7 +948,7 @@ export default function ArrivalSchedule() {
                 </svg>
               </button>
             </div>
-            
+
             <div className="space-y-2">
               <div>
                 <span className="text-sm font-medium text-gray-500 dark:text-gray-400">BP Code:</span>
@@ -906,25 +956,24 @@ export default function ArrivalSchedule() {
                   {selectedCalendarEvent.extendedProps.bpCode}
                 </p>
               </div>
-              
+
               <div>
                 <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Type:</span>
                 <p className="text-sm">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    selectedCalendarEvent.extendedProps.arrivalType === 'regular'
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${selectedCalendarEvent.extendedProps.arrivalType === 'regular'
                       ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
                       : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                  }`}>
+                    }`}>
                     {selectedCalendarEvent.extendedProps.arrivalType === 'regular' ? 'Regular' : 'Additional'}
                   </span>
                 </p>
               </div>
-              
+
               {selectedCalendarEvent.start && (
                 <div>
                   <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Time:</span>
                   <p className="text-sm text-gray-800 dark:text-white">
-                    {typeof selectedCalendarEvent.start === 'string' 
+                    {typeof selectedCalendarEvent.start === 'string'
                       ? new Date(selectedCalendarEvent.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
                       : selectedCalendarEvent.start instanceof Date
                         ? selectedCalendarEvent.start.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
@@ -940,7 +989,7 @@ export default function ArrivalSchedule() {
                   </p>
                 </div>
               )}
-              
+
               {selectedCalendarEvent.extendedProps.dock && (
                 <div>
                   <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Dock:</span>
@@ -973,10 +1022,10 @@ const renderEventContent = (eventInfo: any) => {
   const event = eventInfo.event;
   const bpCode = event.extendedProps.bpCode;
   const arrivalType = event.extendedProps.arrivalType;
-  
+
   // Determine color based on arrival type
   const colorClass = arrivalType === 'regular' ? 'fc-bg-primary' : 'fc-bg-success';
-  
+
   return (
     <div className={`event-fc-color flex fc-event-main ${colorClass} p-1 rounded-sm cursor-pointer hover:opacity-80 transition-opacity`}>
       <div className="fc-daygrid-event-dot"></div>
