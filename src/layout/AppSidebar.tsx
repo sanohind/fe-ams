@@ -65,7 +65,7 @@ const mainPageItems: NavItem[] =[
     icon: <BoltIcon />,
     name: "Arrival Manage",
     path: "/arrival-manage",
-    requiredRoles: ['admin', 'superadmin'],
+    requiredRoles: ['admin', 'superadmin','operator'],
   },
   {
     icon: <BoxIcon />,

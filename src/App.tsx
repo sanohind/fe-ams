@@ -134,12 +134,12 @@ export default function App() {
               </ProtectedRoute>
             } />
             <Route path="/arrival-manage" element={
-              <ProtectedRoute requiredRoles={['admin', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['admin', 'superadmin', 'operator']}>
                 <ArrivalManage />
               </ProtectedRoute>
             } />
             <Route path="/add-arrival" element={
-              <ProtectedRoute requiredRoles={['admin', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['admin', 'superadmin', 'operator']}>
                 <AddArrival />
               </ProtectedRoute>
             } />
