@@ -11,7 +11,7 @@ import Button from "../../components/ui/button/Button";
 interface PerformanceData {
   id: number;
   bp_code: string;
-  bp_name?: string;
+  supplier_name?: string;
   period_month: number;
   period_year: number;
   final_score: number;
@@ -24,7 +24,7 @@ interface PerformanceData {
 
 interface TopPerformer {
   bp_code: string;
-  bp_name?: string;
+  supplier_name?: string;
   final_score: number;
   performance_grade: string;
   ranking: number;
@@ -122,7 +122,7 @@ const DeliveryPerformance = () => {
     fetchData();
   }, [month, year]);
 
-  const handleDownloadCSV = () => {
+  const handleDownloadPDF = async () => {
     if (performances.length === 0) {
       toast.warning("No data available to download", {
         title: "No Data",
@@ -133,55 +133,49 @@ const DeliveryPerformance = () => {
     try {
       setDownloading(true);
 
-      // CSV Headers
-      const headers = [
-        "Supplier Code",
-        "Supplier Name",
-        `${monthNames[month - 1]} Total Score`,
-        `${monthNames[month - 1]} Level`,
-        `${monthNames[month - 1]} Rank`,
-        `Cumulative ${monthNames[month - 1]} Total Score`,
-        `Cumulative ${monthNames[month - 1]} Level`,
-        `Cumulative ${monthNames[month - 1]} Rank`,
-      ];
+      // Fetch PDF with authorization
+      const token = localStorage.getItem("auth_token");
+      const baseURL = import.meta.env.VITE_API_URL || 'http://be-ams.ns1.sanoh.co.id/api';
+      const url = `${baseURL}/delivery-performance/export-pdf?month=${month}&year=${year}`;
 
-      // CSV Rows
-      const rows = performances.map((item) => [
-        item.bp_code,
-        item.bp_name || "-",
-        item.final_score,
-        item.performance_grade,
-        item.ranking,
-        item.cumulative_final_score !== undefined ? item.cumulative_final_score : "-",
-        item.cumulative_performance_grade || "-",
-        item.cumulative_ranking !== undefined ? item.cumulative_ranking : "-",
-      ]);
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+          Accept: "application/pdf",
+        },
+      });
 
-      // Create CSV content
-      const csvContent =
-        headers.join(",") +
-        "\n" +
-        rows.map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n");
+      if (!response.ok) {
+        let errorMessage = "Failed to download PDF";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          errorMessage = `Failed to download PDF: ${response.status} ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
 
-      // Create and download file
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      // Create download link
+      const blob = await response.blob();
+      const pdfBlob = new Blob([blob], { type: "application/pdf" });
+      const blobUrl = URL.createObjectURL(pdfBlob);
       const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute(
-        "download",
-        `delivery-performance-${monthNames[month - 1]}-${year}.csv`
-      );
+      link.href = blobUrl;
+      link.download = `delivery-performance-${monthNames[month - 1]}-${year}.pdf`;
       link.style.visibility = "hidden";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
 
-      toast.success("CSV downloaded successfully", {
+      toast.success("PDF downloaded successfully", {
         title: "Success",
       });
     } catch (err) {
-      toast.error("Failed to download CSV", {
+      const message = err instanceof Error ? err.message : "Failed to download PDF";
+      toast.error(message, {
         title: "Error",
       });
     } finally {
@@ -212,7 +206,7 @@ const DeliveryPerformance = () => {
       render: (value: string, row: PerformanceData) => (
         <div>
           <div className="font-semibold text-gray-900 dark:text-white">{value}</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">{row.bp_name || "-"}</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">{row.supplier_name || "-"}</div>
         </div>
       ),
     },
@@ -270,15 +264,15 @@ const DeliveryPerformance = () => {
     },
   ], [month]);
 
-if (loading) {
-  return (
-    <>
-      <PageMeta title="Delivery Performance" description="Monthly delivery performance summary" />
-      <PageBreadcrumb pageTitle="Delivery Performance" />
-      <SkeletonDeliveryPerformance />
-    </>
-  );
-}
+  if (loading) {
+    return (
+      <>
+        <PageMeta title="Delivery Performance" description="Monthly delivery performance summary" />
+        <PageBreadcrumb pageTitle="Delivery Performance" />
+        <SkeletonDeliveryPerformance />
+      </>
+    );
+  }
 
   return (
     <>
@@ -304,10 +298,10 @@ if (loading) {
         {/* Data Table */}
         {!error && (
           <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 overflow-hidden">
-            <DataTableOne 
+            <DataTableOne
               title="Delivery Performance Resume Data"
-              columns={columns} 
-              data={performances} 
+              columns={columns}
+              data={performances}
               defaultItemsPerPage={10}
               itemsPerPageOptions={[5, 10, 15, 20]}
               searchable={true}
@@ -343,10 +337,10 @@ if (loading) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleDownloadCSV}
+                  onClick={handleDownloadPDF}
                   disabled={downloading || performances.length === 0}
                 >
-                  {downloading ? "Downloading..." : "Download CSV"}
+                  {downloading ? "Downloading..." : "Export PDF"}
                   <svg
                     className="fill-current"
                     width="20"
@@ -445,7 +439,7 @@ if (loading) {
                     <div key={idx} className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
                       <div>
                         <div className="text-gray-500 text-sm dark:text-gray-400">{performer.bp_code}</div>
-                        <div className="text-xs text-gray-400 dark:text-gray-500">{performer.bp_name || "-"}</div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500">{performer.supplier_name || "-"}</div>
                       </div>
                       <div className="text-right">
                         <div className="text-gray-500 text-sm dark:text-gray-400 font-medium">{performer.final_score}</div>
@@ -475,7 +469,7 @@ if (loading) {
                     <div key={idx} className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
                       <div>
                         <div className="text-gray-500 text-sm dark:text-gray-400">{performer.bp_code}</div>
-                        <div className="text-xs text-gray-400 dark:text-gray-500">{performer.bp_name || "-"}</div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500">{performer.supplier_name || "-"}</div>
                       </div>
                       <div className="text-right">
                         <div className="text-gray-500 text-sm dark:text-gray-400 font-medium">{performer.final_score}</div>
@@ -490,7 +484,7 @@ if (loading) {
             </div>
           </div>
         )}
-        
+
         {/* Worst Performers */}
         {!error && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -510,7 +504,7 @@ if (loading) {
                     <div key={idx} className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
                       <div>
                         <div className="text-gray-500 text-sm dark:text-gray-400">{performer.bp_code}</div>
-                        <div className="text-xs text-gray-400 dark:text-gray-500">{performer.bp_name || "-"}</div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500">{performer.supplier_name || "-"}</div>
                       </div>
                       <div className="text-right">
                         <div className="text-gray-500 text-sm dark:text-gray-400 font-medium">{performer.final_score}</div>
@@ -540,7 +534,7 @@ if (loading) {
                     <div key={idx} className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
                       <div>
                         <div className="text-gray-500 text-sm dark:text-gray-400">{performer.bp_code}</div>
-                        <div className="text-xs text-gray-400 dark:text-gray-500">{performer.bp_name || "-"}</div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500">{performer.supplier_name || "-"}</div>
                       </div>
                       <div className="text-right">
                         <div className="text-gray-500 text-sm dark:text-gray-400 font-medium">{performer.final_score}</div>
