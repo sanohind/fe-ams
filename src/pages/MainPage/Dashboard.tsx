@@ -19,7 +19,9 @@ interface DNItem {
 interface DashboardDataItem {
   no: number;
   supplier: string;
-  schedule: string;
+  schedule: string; // Kept for backwards compatibility
+  arrivalPlan: string;
+  departurePlan: string;
   dock: string;
   platNumber: string;
   securityTimeIn: string;
@@ -111,13 +113,6 @@ const formatDurationToClock = (value?: string | number | null) => {
 const renderDurationCell = (value?: string | number | null) => (
   <span className="font-mono text-sm text-gray-900 dark:text-gray-100">
     {formatDurationToClock(value)}
-  </span>
-);
-
-const stackedHeaderLabel = (top: string, bottom: string) => (
-  <span className="flex flex-col leading-tight text-center">
-    <span>{top}</span>
-    <span>{bottom}</span>
   </span>
 );
 
@@ -238,9 +233,6 @@ export default function Dashboard() {
   // Transform API data to dashboard format
   const transformApiDataToDashboard = (apiData: any[]): DashboardDataItem[] => {
     return apiData.map((item, index) => {
-      const warehouseTimeIn = item.warehouse_time_in || '-';
-      const scheduleTime = item.schedule || '-';
-
       // Use arrival_status directly from backend (from arrival_transactions.status column)
       // Frontend should not calculate status - it's determined by backend logic
       const arrivalStatus = item.arrival_status || 'pending';
@@ -262,13 +254,15 @@ export default function Dashboard() {
       return {
         no: index + 1,
         supplier: item.supplier_name || item.bp_code || '-',
-        schedule: scheduleTime,
+        schedule: item.arrival_plan || item.schedule || '-', // Use arrival_plan, fallback to schedule for backwards compatibility
+        arrivalPlan: item.arrival_plan || item.schedule || '-',
+        departurePlan: item.departure_plan || '-',
         dock: item.dock || '-',
         platNumber: item.vehicle_plate || '-',
         securityTimeIn: item.security_time_in || '-',
         securityTimeOut: item.security_time_out || '-',
         securityDuration: item.security_duration || '-',
-        warehouseTimeIn: warehouseTimeIn,
+        warehouseTimeIn: item.warehouse_time_in || '-',
         warehouseTimeOut: item.warehouse_time_out || '-',
         warehouseDuration: item.warehouse_duration || '-',
         dnList: dnList,
@@ -344,63 +338,81 @@ export default function Dashboard() {
       key: "no",
       label: "No",
       sortable: true,
+      rowSpan: 2,
     },
     {
       key: "supplier",
       label: "Supplier",
       sortable: true,
+      rowSpan: 2,
     },
     {
       key: "schedule",
-      label: "Schedule",
+      label: "Arrival",
       sortable: true,
+      group: "Plan",
+    },
+    {
+      key: "departurePlan",
+      label: "Departure",
+      sortable: true,
+      group: "Plan",
     },
     {
       key: "dock",
       label: "Dock",
       sortable: true,
+      rowSpan: 2,
     },
     {
       key: "platNumber",
       label: "Plat Number",
       sortable: true,
+      rowSpan: 2,
     },
     {
       key: "securityTimeIn",
-      label: stackedHeaderLabel("Security", "Time (In)"),
+      label: "Arrival",
       sortable: false,
+      group: "Security",
     },
     {
       key: "securityTimeOut",
-      label: stackedHeaderLabel("Security", "Time (Out)"),
+      label: "Departure",
       sortable: false,
+      group: "Security",
     },
     {
       key: "securityDuration",
       label: "Duration",
       sortable: false,
+      group: "Security",
       render: (value) => renderDurationCell(value as string | number | null),
     },
     {
       key: "warehouseTimeIn",
-      label: stackedHeaderLabel("Warehouse", "Time (In)"),
+      label: "Arrival",
       sortable: false,
+      group: "Warehouse",
     },
     {
       key: "warehouseTimeOut",
-      label: stackedHeaderLabel("Warehouse", "Time (Out)"),
+      label: "Departure",
       sortable: false,
+      group: "Warehouse",
     },
     {
       key: "warehouseDuration",
       label: "Duration",
       sortable: false,
+      group: "Warehouse",
       render: (value) => renderDurationCell(value as string | number | null),
     },
     {
       key: "arrivalStatus",
       label: "Arrival Status",
       sortable: true,
+      rowSpan: 2,
       render: (value) => {
         const badge = getArrivalStatusBadge(value as string);
         if (!badge) {
@@ -420,6 +432,7 @@ export default function Dashboard() {
       key: "dnList",
       label: "DN Number",
       sortable: false,
+      rowSpan: 2,
       render: (value, row) => {
         const dnList = value as DNItem[];
         const totalDN = dnList.length;
@@ -437,8 +450,9 @@ export default function Dashboard() {
     },
     {
       key: "quantity_dn",
-      label: "Quantity (DN)",
+      label: "DN",
       sortable: true,
+      group: "Quantity",
       render: (_value, row: any) => {
         const qty = row.quantity_dn || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityDN, 0) || 0;
         return <span className=" dark:text-white">{qty.toLocaleString()}</span>;
@@ -446,8 +460,9 @@ export default function Dashboard() {
     },
     {
       key: "quantity_actual",
-      label: "Quantity (Actual)",
+      label: "Actual",
       sortable: true,
+      group: "Quantity",
       render: (_value, row: any) => {
         const qtyDN = row.quantity_dn || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityDN, 0) || 0;
         const qtyActual = row.quantity_actual || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityActual, 0) || 0;
@@ -467,6 +482,7 @@ export default function Dashboard() {
       key: "labelPart",
       label: "Label Part",
       sortable: false,
+      group: "Item Check",
       render: (value) => {
         if (!value || value === 'PENDING') return <span className="text-gray-400">-</span>;
         return (
@@ -483,6 +499,7 @@ export default function Dashboard() {
       key: "coaMsds",
       label: "COA/MSDS",
       sortable: false,
+      group: "Item Check",
       render: (value) => {
         if (!value || value === 'PENDING') return <span className="text-gray-400">-</span>;
         return (
@@ -499,6 +516,7 @@ export default function Dashboard() {
       key: "packing",
       label: "Packing",
       sortable: false,
+      group: "Item Check",
       render: (value) => {
         if (!value || value === 'PENDING') return <span className="text-gray-400">-</span>;
         return (
@@ -513,8 +531,9 @@ export default function Dashboard() {
     },
     {
       key: "scanStatus",
-      label: "Scan Status",
+      label: "Scan",
       sortable: true,
+      group: "Status",
       render: (value) => {
         const statusColors: Record<string, string> = {
           "Completed": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
@@ -531,8 +550,9 @@ export default function Dashboard() {
     },
     {
       key: "dnStatus",
-      label: "DN Status",
+      label: "DN",
       sortable: true,
+      group: "Status",
       render: (value) => {
         const statusColors: Record<string, string> = {
           "Pending": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
@@ -554,21 +574,22 @@ export default function Dashboard() {
       key: "pic",
       label: "PIC",
       sortable: true,
+      rowSpan: 2,
     },
   ];
 
-if (loading) {
-  return (
-    <div className="overflow-x-hidden space-y-5 sm:space-y-6">
-      <PageMeta
-        title="Dashboard | SPHERE by SANOH Indonesia"
-        description="This is React.js Data Tables Dashboard page for SPHERE by SANOH Indonesia"
-      />
-      <PageBreadcrumb pageTitle="Dashboard" />
-      <SkeletonDashboardPage />
-    </div>
-  );
-}
+  if (loading) {
+    return (
+      <div className="overflow-x-hidden space-y-5 sm:space-y-6">
+        <PageMeta
+          title="Dashboard | SPHERE by SANOH Indonesia"
+          description="This is React.js Data Tables Dashboard page for SPHERE by SANOH Indonesia"
+        />
+        <PageBreadcrumb pageTitle="Dashboard" />
+        <SkeletonDashboardPage />
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-x-hidden space-y-5 sm:space-y-6">
