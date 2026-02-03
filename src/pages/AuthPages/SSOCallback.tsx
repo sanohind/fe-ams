@@ -19,12 +19,12 @@ export default function SSOCallback() {
     const pathname = window.location.pathname;
     const search = window.location.search;
     const hash = window.location.hash;
-    
+
     // Case 1: /sso/callback?token=... (without hash) - redirect to hash version
     if (pathname === '/sso/callback' && !hash) {
       // Extract only the query string (token), ignore any hash that might be in the URL
       const cleanSearch = search.split('#')[0]; // Remove hash from search if present
-      
+
       // If there's a hash in the search string (e.g., ?token=...#/supplier-contacts)
       // Extract it and store it for later redirect
       if (search.includes('#')) {
@@ -33,11 +33,11 @@ export default function SSOCallback() {
           sessionStorage.setItem('sso_redirect_path', hashPart);
         }
       }
-      
+
       window.location.replace('#' + pathname + cleanSearch);
       return;
     }
-    
+
     // Case 2: /sso/callback?token=...#/supplier-contacts (hash in URL after query)
     // This happens when Sphere SSO adds hash to the URL
     if (pathname === '/sso/callback' && hash && !hash.startsWith('#/sso/callback')) {
@@ -51,13 +51,13 @@ export default function SSOCallback() {
       window.location.replace('#' + pathname + cleanSearch);
       return;
     }
-    
+
     // Case 3: #/sso/callback?token=...#/supplier-contacts (hash contains both)
     if (hash && hash.includes('/sso/callback') && hash.includes('?')) {
       const hashParts = hash.split('#').filter(p => p);
       const callbackPart = hashParts.find(part => part.includes('/sso/callback'));
       const otherPart = hashParts.find(part => !part.includes('/sso/callback') && part.startsWith('/'));
-      
+
       if (callbackPart && otherPart) {
         // Store the other path for redirect
         sessionStorage.setItem('sso_redirect_path', otherPart);
@@ -74,8 +74,18 @@ export default function SSOCallback() {
   useEffect(() => {
     const handleSSOCallback = async () => {
       try {
+        // Check if SSO is enabled
+        const ssoEnabled = import.meta.env.VITE_SSO_ENABLED === 'true';
+
+        // If SSO is disabled, redirect to home without processing token
+        if (!ssoEnabled) {
+          console.log('SSO is disabled, redirecting to home...');
+          navigate('/');
+          return;
+        }
+
         const token = searchParams.get('token');
-        
+
         if (!token) {
           setError('No token provided');
           setLoading(false);
@@ -85,7 +95,7 @@ export default function SSOCallback() {
         // Set token and fetch user before navigating
         await login(token);
         toast.success('Login successful!', { title: 'Welcome' });
-        
+
         // Check if there's a stored redirect path from before SSO redirect
         const redirectPath = sessionStorage.getItem('sso_redirect_path');
         if (redirectPath) {
