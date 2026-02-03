@@ -143,13 +143,6 @@ const renderDurationCell = (value?: string | number | null) => (
   </span>
 );
 
-const stackedHeaderLabel = (top: string, bottom: string) => (
-  <span className="flex flex-col leading-tight text-center">
-    <span>{top}</span>
-    <span>{bottom}</span>
-  </span>
-);
-
 export default function ArrivalSchedule() {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [selectedDNData, setSelectedDNData] = useState<{
@@ -515,63 +508,75 @@ export default function ArrivalSchedule() {
       key: "no",
       label: "No",
       sortable: true,
+      rowSpan: 2,
     },
     {
       key: "supplier",
       label: "Supplier",
       sortable: true,
+      rowSpan: 2,
     },
     {
       key: "schedule",
       label: "Schedule",
       sortable: true,
+      rowSpan: 2,
     },
     {
       key: "dock",
       label: "Dock",
       sortable: true,
+      rowSpan: 2,
     },
     {
       key: "platNumber",
       label: "Plat Number",
       sortable: true,
+      rowSpan: 2,
     },
     {
       key: "securityTimeIn",
-      label: stackedHeaderLabel("Security", "Time (In)"),
+      label: "Arrival",
       sortable: false,
+      group: "Security",
     },
     {
       key: "securityTimeOut",
-      label: stackedHeaderLabel("Security", "Time (Out)"),
+      label: "Departure",
       sortable: false,
+      group: "Security",
     },
     {
       key: "securityDuration",
       label: "Duration",
       sortable: false,
+      group: "Security",
       render: (value) => renderDurationCell(value as string | number | null),
     },
     {
       key: "warehouseTimeIn",
-      label: stackedHeaderLabel("Warehouse", "Time (In)"),
+      label: "Arrival",
       sortable: false,
+      group: "Warehouse",
     },
     {
       key: "warehouseTimeOut",
-      label: stackedHeaderLabel("Warehouse", "Time (Out)"),
+      label: "Departure",
       sortable: false,
+      group: "Warehouse",
     },
     {
       key: "warehouseDuration",
       label: "Duration",
       sortable: false,
+      group: "Warehouse",
       render: (value) => renderDurationCell(value as string | number | null),
     },
     {
       key: "arrivalStatus",
       label: "Arrival Status",
       sortable: true,
+      rowSpan: 2,
       render: (value) => {
         const badge = getArrivalStatusBadge(value as string);
         if (!badge) {
@@ -591,6 +596,7 @@ export default function ArrivalSchedule() {
       key: "dnList",
       label: "DN Number",
       sortable: false,
+      rowSpan: 2,
       render: (value, row) => {
         const dnList = value as DNItem[];
         const totalDN = dnList.length;
@@ -608,8 +614,9 @@ export default function ArrivalSchedule() {
     },
     {
       key: "quantity_dn",
-      label: "Quantity (DN)",
+      label: "DN",
       sortable: true,
+      group: "Quantity",
       render: (_value, row: any) => {
         const qty = row.quantity_dn || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityDN, 0) || 0;
         return <span className=" dark:text-white">{qty.toLocaleString()}</span>;
@@ -617,8 +624,9 @@ export default function ArrivalSchedule() {
     },
     {
       key: "quantity_actual",
-      label: "Quantity (Actual)",
+      label: "Actual",
       sortable: true,
+      group: "Quantity",
       render: (_value, row: any) => {
         const qtyDN = row.quantity_dn || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityDN, 0) || 0;
         const qtyActual = row.quantity_actual || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityActual, 0) || 0;
@@ -626,8 +634,8 @@ export default function ArrivalSchedule() {
 
         return (
           <span className={`font-medium ${isMatch
-              ? "text-green-600 dark:text-green-400"
-              : "text-red-600 dark:text-red-400"
+            ? "text-green-600 dark:text-green-400"
+            : "text-red-600 dark:text-red-400"
             }`}>
             {qtyActual.toLocaleString()}
           </span>
@@ -638,6 +646,7 @@ export default function ArrivalSchedule() {
       key: "labelPart",
       label: "Label Part",
       sortable: false,
+      group: "Item Check",
       render: (value) => {
         if (!value || value === 'PENDING') return <span className="text-gray-400">-</span>;
         return (
@@ -654,6 +663,7 @@ export default function ArrivalSchedule() {
       key: "coaMsds",
       label: "COA/MSDS",
       sortable: false,
+      group: "Item Check",
       render: (value) => {
         if (!value || value === 'PENDING') return <span className="text-gray-400">-</span>;
         return (
@@ -670,6 +680,7 @@ export default function ArrivalSchedule() {
       key: "packing",
       label: "Packing",
       sortable: false,
+      group: "Item Check",
       render: (value) => {
         if (!value || value === 'PENDING') return <span className="text-gray-400">-</span>;
         return (
@@ -684,8 +695,9 @@ export default function ArrivalSchedule() {
     },
     {
       key: "scanStatus",
-      label: "Scan Status",
+      label: "Scan",
       sortable: true,
+      group: "Status",
       render: (value) => {
         const statusColors: Record<string, string> = {
           "Completed": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
@@ -702,8 +714,9 @@ export default function ArrivalSchedule() {
     },
     {
       key: "dnStatus",
-      label: "DN Status",
+      label: "DN",
       sortable: true,
+      group: "Status",
       render: (value) => {
         const statusColors: Record<string, string> = {
           "Pending": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
@@ -725,21 +738,22 @@ export default function ArrivalSchedule() {
       key: "pic",
       label: "PIC",
       sortable: true,
+      rowSpan: 2,
     },
   ];
 
-if (loading) {
-  return (
-    <div className="overflow-x-hidden space-y-5 sm:space-y-6">
-      <PageMeta
-        title="Arrival Schedule | SPHERE by SANOH Indonesia"
-        description="This is React.js Arrival Schedule page for SPHERE by SANOH Indonesia"
-      />
-      <PageBreadcrumb pageTitle="Arrival Schedule" />
-      <SkeletonArrivalSchedule />
-    </div>
-  );
-}
+  if (loading) {
+    return (
+      <div className="overflow-x-hidden space-y-5 sm:space-y-6">
+        <PageMeta
+          title="Arrival Schedule | SPHERE by SANOH Indonesia"
+          description="This is React.js Arrival Schedule page for SPHERE by SANOH Indonesia"
+        />
+        <PageBreadcrumb pageTitle="Arrival Schedule" />
+        <SkeletonArrivalSchedule />
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-x-hidden space-y-5 sm:space-y-6">
@@ -798,30 +812,30 @@ if (loading) {
 
         {/* Download Daily Report Button */}
         {isNotToday() && (
-  <Button
-    variant="outline"
-    size="sm"
-    onClick={handleDownloadReport}
-    disabled={downloadingReport}
-  >
-    {downloadingReport ? "Downloading..." : "Download Report"}
-    <svg
-      className="fill-current"
-      width="20"
-      height="20"
-      viewBox="0 0 20 20"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M10.0018 14.083C9.7866 14.083 9.59255 13.9924 9.45578 13.8472L5.61586 10.0097C5.32288 9.71688 5.32272 9.242 5.61552 8.94902C5.90832 8.65603 6.3832 8.65588 6.67618 8.94868L9.25182 11.5227L9.25182 3.33301C9.25182 2.91879 9.5876 2.58301 10.0018 2.58301C10.416 2.58301 10.7518 2.91879 10.7518 3.33301L10.7518 11.5193L13.3242 8.94866C13.6172 8.65587 14.0921 8.65604 14.3849 8.94903C14.6777 9.24203 14.6775 9.7169 14.3845 10.0097L10.5761 13.8154C10.4385 13.979 10.2323 14.083 10.0018 14.083ZM4.0835 13.333C4.0835 12.9188 3.74771 12.583 3.3335 12.583C2.91928 12.583 2.5835 12.9188 2.5835 13.333V15.1663C2.5835 16.409 3.59086 17.4163 4.8335 17.4163H15.1676C16.4102 17.4163 17.4176 16.409 17.4176 15.1663V13.333C17.4176 12.9188 17.0818 12.583 16.6676 12.583C16.2533 12.583 15.9176 12.9188 15.9176 13.333V15.1663C15.9176 15.5806 15.5818 15.9163 15.1676 15.9163H4.8335C4.41928 15.9163 4.0835 15.5806 4.0835 15.1663V13.333Z"
-        fill="currentColor"
-      />
-    </svg>
-  </Button>
-)}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadReport}
+            disabled={downloadingReport}
+          >
+            {downloadingReport ? "Downloading..." : "Download Report"}
+            <svg
+              className="fill-current"
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M10.0018 14.083C9.7866 14.083 9.59255 13.9924 9.45578 13.8472L5.61586 10.0097C5.32288 9.71688 5.32272 9.242 5.61552 8.94902C5.90832 8.65603 6.3832 8.65588 6.67618 8.94868L9.25182 11.5227L9.25182 3.33301C9.25182 2.91879 9.5876 2.58301 10.0018 2.58301C10.416 2.58301 10.7518 2.91879 10.7518 3.33301L10.7518 11.5193L13.3242 8.94866C13.6172 8.65587 14.0921 8.65604 14.3849 8.94903C14.6777 9.24203 14.6775 9.7169 14.3845 10.0097L10.5761 13.8154C10.4385 13.979 10.2323 14.083 10.0018 14.083ZM4.0835 13.333C4.0835 12.9188 3.74771 12.583 3.3335 12.583C2.91928 12.583 2.5835 12.9188 2.5835 13.333V15.1663C2.5835 16.409 3.59086 17.4163 4.8335 17.4163H15.1676C16.4102 17.4163 17.4176 16.409 17.4176 15.1663V13.333C17.4176 12.9188 17.0818 12.583 16.6676 12.583C16.2533 12.583 15.9176 12.9188 15.9176 13.333V15.1663C15.9176 15.5806 15.5818 15.9163 15.1676 15.9163H4.8335C4.41928 15.9163 4.0835 15.5806 4.0835 15.1663V13.333Z"
+                fill="currentColor"
+              />
+            </svg>
+          </Button>
+        )}
       </div>
 
       <div className="space-y-5 sm:space-y-6">
@@ -961,8 +975,8 @@ if (loading) {
                 <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Type:</span>
                 <p className="text-sm">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${selectedCalendarEvent.extendedProps.arrivalType === 'regular'
-                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                      : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                    : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                     }`}>
                     {selectedCalendarEvent.extendedProps.arrivalType === 'regular' ? 'Regular' : 'Additional'}
                   </span>

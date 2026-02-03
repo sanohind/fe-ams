@@ -17,7 +17,9 @@ interface DNItem {
 interface DashboardDataItem {
   no: number;
   supplier: string;
-  schedule: string;
+  schedule: string; // Kept for backwards compatibility
+  arrivalPlan: string;
+  departurePlan: string;
   dock: string;
   platNumber: string;
   securityTimeIn: string;
@@ -244,8 +246,6 @@ export default function PublicDashboard() {
 
   const transformApiDataToDashboard = (apiData: any[]): DashboardDataItem[] => {
     return apiData.map((item, index) => {
-      const warehouseTimeIn = item.warehouse_time_in || '-';
-      const scheduleTime = item.schedule || '-';
       const arrivalStatus = item.arrival_status || 'pending';
 
       const dnList = (item.dn_list || []).map((dn: any) => ({
@@ -263,13 +263,15 @@ export default function PublicDashboard() {
       return {
         no: index + 1,
         supplier: item.supplier_name || item.bp_code || '-',
-        schedule: scheduleTime,
+        schedule: item.arrival_plan || item.schedule || '-',
+        arrivalPlan: item.arrival_plan || item.schedule || '-',
+        departurePlan: item.departure_plan || '-',
         dock: item.dock || '-',
         platNumber: item.vehicle_plate || '-',
         securityTimeIn: item.security_time_in || '-',
         securityTimeOut: item.security_time_out || '-',
         securityDuration: item.security_duration || '-',
-        warehouseTimeIn: warehouseTimeIn,
+        warehouseTimeIn: item.warehouse_time_in || '-',
         warehouseTimeOut: item.warehouse_time_out || '-',
         warehouseDuration: item.warehouse_duration || '-',
         dnList: dnList,
@@ -369,63 +371,81 @@ export default function PublicDashboard() {
       key: "no",
       label: "No",
       sortable: true,
+      rowSpan: 2,
     },
     {
       key: "supplier",
       label: "Supplier",
       sortable: true,
+      rowSpan: 2,
     },
     {
       key: "schedule",
-      label: "Schedule",
+      label: "Arrival",
       sortable: true,
+      group: "Plan",
+    },
+    {
+      key: "departurePlan",
+      label: "Departure",
+      sortable: true,
+      group: "Plan",
     },
     {
       key: "dock",
       label: "Dock",
       sortable: true,
+      rowSpan: 2,
     },
     {
       key: "platNumber",
       label: stackedHeaderLabel("Plat", "Number"),
       sortable: true,
+      rowSpan: 2,
     },
     {
       key: "securityTimeIn",
-      label: stackedHeaderLabel("SCRT", "In"),
+      label: "Arrival",
       sortable: false,
+      group: "Security",
     },
     {
       key: "securityTimeOut",
-      label: stackedHeaderLabel("SCRT", "Out"),
+      label: "Departure",
       sortable: false,
+      group: "Security",
     },
     {
       key: "securityDuration",
       label: "Drtn",
       sortable: false,
+      group: "Security",
       render: (value) => renderDurationCell(value as string | number | null),
     },
     {
       key: "warehouseTimeIn",
-      label: stackedHeaderLabel("WH", "In"),
+      label: "Arrival",
       sortable: false,
+      group: "Warehouse",
     },
     {
       key: "warehouseTimeOut",
-      label: stackedHeaderLabel("WH", "Out"),
+      label: "Departure",
       sortable: false,
+      group: "Warehouse",
     },
     {
       key: "warehouseDuration",
       label: "Drtn",
       sortable: false,
+      group: "Warehouse",
       render: (value) => renderDurationCell(value as string | number | null),
     },
     {
       key: "arrivalStatus",
       label: stackedHeaderLabel("Arrival", "Status"),
       sortable: true,
+      rowSpan: 2,
       render: (value) => {
         const badge = getArrivalStatusBadge(value as string);
         if (!badge) {
@@ -445,6 +465,7 @@ export default function PublicDashboard() {
       key: "dnList",
       label: "DN Number",
       sortable: false,
+      rowSpan: 2,
       render: (value, row) => {
         const dnList = value as DNItem[];
         const totalDN = dnList.length;
@@ -462,8 +483,9 @@ export default function PublicDashboard() {
     },
     {
       key: "quantity_dn",
-      label: "Qty (DN)",
+      label: "DN",
       sortable: true,
+      group: "Quantity",
       render: (_value, row: any) => {
         const qty = row.quantity_dn || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityDN, 0) || 0;
         return <span className=" dark:text-white">{qty.toLocaleString()}</span>;
@@ -471,8 +493,9 @@ export default function PublicDashboard() {
     },
     {
       key: "quantity_actual",
-      label: "Qty (Actual)",
+      label: "Actual",
       sortable: true,
+      group: "Quantity",
       render: (_value, row: any) => {
         const qtyDN = row.quantity_dn || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityDN, 0) || 0;
         const qtyActual = row.quantity_actual || (row.dnList as DNItem[])?.reduce((sum, dn) => sum + dn.quantityActual, 0) || 0;
@@ -480,8 +503,8 @@ export default function PublicDashboard() {
 
         return (
           <span className={`font-medium ${isMatch
-              ? "text-green-600 dark:text-green-400"
-              : "text-red-600 dark:text-red-400"
+            ? "text-green-600 dark:text-green-400"
+            : "text-red-600 dark:text-red-400"
             }`}>
             {qtyActual.toLocaleString()}
           </span>
@@ -490,8 +513,9 @@ export default function PublicDashboard() {
     },
     {
       key: "scanStatus",
-      label: "Scan Status",
+      label: "Scan",
       sortable: true,
+      group: "Status",
       render: (value) => {
         const statusColors: Record<string, string> = {
           "Completed": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
@@ -508,8 +532,9 @@ export default function PublicDashboard() {
     },
     {
       key: "dnStatus",
-      label: "DN Status",
+      label: "DN",
       sortable: true,
+      group: "Status",
       render: (value) => {
         const statusColors: Record<string, string> = {
           "Pending": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
@@ -531,6 +556,7 @@ export default function PublicDashboard() {
       key: "pic",
       label: "PIC",
       sortable: true,
+      rowSpan: 2,
     },
   ];
 

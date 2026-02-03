@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     apiService.clearToken();
     localStorage.removeItem('auth_token');
-    
+
     // Immediately redirect to SSO login page without any delay
     // This prevents any pending requests from being sent
     const appOrigin = window.location.origin;
@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const callback = `${appOrigin}/#/sso/callback`;
     const sphereSsoBase = import.meta.env.VITE_SPHERE_SSO_URL || 'http://127.0.0.1:8000/sso/login';
     const redirectUrl = `${sphereSsoBase}?redirect=${encodeURIComponent(callback)}`;
-    
+
     // Use window.location.replace to prevent back button issues
     // and ensure immediate redirect without waiting for any pending operations
     window.location.replace(redirectUrl);
@@ -88,11 +88,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('hasRole: No user or role found', { user, roles });
       return false;
     }
-    
+
     const userRoleSlug = user.role.slug;
     const departmentCode = user.department?.code;
     const isWarehouse = departmentCode === 'WH';
-    
+
     // Direct role match
     if (roles.includes(userRoleSlug)) {
       // For admin and operator, also check if they have warehouse department
@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return true;
       }
     }
-    
+
     // Legacy role support for backward compatibility
     // admin-warehouse -> admin with department WH
     // operator-warehouse -> operator with department WH
@@ -122,17 +122,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return true;
       }
     }
-    
-    const hasAccess = roles.includes(userRoleSlug) || 
+
+    const hasAccess = roles.includes(userRoleSlug) ||
       (roles.includes('admin-warehouse') && userRoleSlug === 'admin' && isWarehouse) ||
       (roles.includes('operator-warehouse') && userRoleSlug === 'operator' && isWarehouse);
-    
-    console.log('hasRole check:', { 
+
+    console.log('hasRole check:', {
       userRole: userRoleSlug,
       department: departmentCode,
       isWarehouse,
-      requiredRoles: roles, 
-      hasAccess 
+      requiredRoles: roles,
+      hasAccess
     });
     return hasAccess;
   };
@@ -141,26 +141,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        // Check if SSO is enabled
+        const ssoEnabled = import.meta.env.VITE_SSO_ENABLED === 'true';
+
         // Check if we're on a public route - don't initialize auth if so
         // Support hash mode: get path from hash if available, otherwise from pathname
-        const currentPath = window.location.hash 
+        const currentPath = window.location.hash
           ? window.location.hash.replace('#', '') || '/'
           : window.location.pathname;
         const publicRoutes = ['/driver', '/arrival-dashboard'];
         const isPublicRoute = publicRoutes.some(route => currentPath.startsWith(route));
-        
+
         if (isPublicRoute) {
           // Skip auth initialization for public routes
           setIsLoading(false);
           return;
         }
 
+        // If SSO is disabled, set a mock token to bypass authentication
+        if (!ssoEnabled) {
+          setToken('non-sso-mode');
+          apiService.setToken('non-sso-mode');
+
+          // Set mock superadmin user for full access
+          setUser({
+            id: 1,
+            name: 'Super Admin (Non Auth)',
+            email: 'superadmin@besphere.com',
+            username: 'superadmin',
+            role: {
+              id: 1,
+              name: 'Superadmin',
+              slug: 'superadmin',
+              level: 1
+            }
+            // department is optional and not needed for superadmin
+          });
+
+          setIsLoading(false);
+          return;
+        }
+
+        // SSO is enabled - proceed with normal flow
         const storedToken = localStorage.getItem('auth_token');
-        
+
         if (storedToken) {
           setToken(storedToken);
           apiService.setToken(storedToken);
-          
+
           // Try to validate token and get user info
           try {
             const response = await apiService.getMe();

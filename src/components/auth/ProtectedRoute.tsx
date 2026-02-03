@@ -13,15 +13,15 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
     // Save current path before redirecting to SSO.
     // Ini penting sebagai fallback ketika instance backend Sphere belum
     // mengirim callback hash, sehingga FE dapat mengembalikan user ke path semula.
-    const currentPath = window.location.hash 
+    const currentPath = window.location.hash
       ? window.location.hash.replace('#', '') || '/'
       : window.location.pathname;
-    
+
     // Don't save if it's already the callback path
     if (currentPath !== '/sso/callback') {
       sessionStorage.setItem('sso_redirect_path', currentPath);
     }
-    
+
     const appOrigin = window.location.origin;
     // Use hash routing for callback URL
     const callback = `${appOrigin}/#/sso/callback`;
@@ -41,12 +41,22 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
     );
   }
 
+  // Check if SSO is enabled
+  const ssoEnabled = import.meta.env.VITE_SSO_ENABLED === 'true';
+
   if (!isAuthenticated) {
+    // If SSO is disabled, allow access without authentication
+    if (!ssoEnabled) {
+      return <>{children}</>;
+    }
+
+    // SSO is enabled - redirect to Sphere login
     redirectToSphereLogin();
     return null;
   }
 
-  if (requiredRoles && !hasRole(requiredRoles)) {
+  // Skip role check if SSO is disabled (since we don't have user data)
+  if (requiredRoles && ssoEnabled && !hasRole(requiredRoles)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
