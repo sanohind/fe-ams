@@ -239,6 +239,7 @@ export default function App() {
           
           {/* SSO Callback */}
           <Route path="/sso/callback" element={<SSOCallback />} />
+          <Route path="/callback" element={<SSOCallback />} />
 
           {/* Public Pages - No Authentication Required */}
           <Route path="/driver" element={<DriverCheck />} />
