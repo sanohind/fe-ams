@@ -1,7 +1,9 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import apiService from '../services/api';
+import { userManager } from '../auth/oidcConfig';
+import { User } from 'oidc-client-ts';
 
-interface User {
+interface AppUser {
   id: number;
   name: string;
   email: string;
@@ -20,215 +22,233 @@ interface User {
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: AppUser | null;
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (token: string) => void;
-  logout: () => void;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
   hasRole: (roles: string[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Consider authenticated if token exists; user can be fetched lazily
+  // Consider authenticated if token exists
   const isAuthenticated = !!token;
 
-  const login = async (newToken: string) => {
+  const login = async () => {
     setIsLoading(true);
-    setToken(newToken);
-    apiService.setToken(newToken);
-    localStorage.setItem('auth_token', newToken);
-
-    // Try to fetch current user, but don't fail login if it errors
     try {
-      const response = await apiService.getMe();
-      console.log('Login - /user API response:', response);
-      if (response.success && (response.data as any)?.user) {
-        console.log('Login - Setting user from API:', (response.data as any).user);
-        setUser((response.data as any).user);
-      } else {
-        console.log('Login - No user data in response:', response);
-      }
-    } catch (_) {
-      // Ignore; user will be fetched later
-      console.warn('Login - Could not fetch user data');
-    } finally {
+      await userManager.signinRedirect();
+    } catch (err) {
+      console.error('Login failed:', err);
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    // Clear local state first (synchronously to prevent any async operations)
-    setUser(null);
-    setToken(null);
-    apiService.clearToken();
-    localStorage.removeItem('auth_token');
+  const logout = async () => {
+    try {
+      // Clear local state
+      setUser(null);
+      setToken(null);
+      apiService.clearToken();
+      localStorage.removeItem('auth_token');
 
-    // Immediately redirect to SSO login page without any delay
-    // This prevents any pending requests from being sent
-    const appOrigin = window.location.origin;
-    // Use hash routing for callback URL
-    const callback = `${appOrigin}/#/sso/callback`;
-    const sphereSsoBase = import.meta.env.VITE_SPHERE_SSO_URL || 'http://127.0.0.1:8000/sso/login';
-    const redirectUrl = `${sphereSsoBase}?redirect=${encodeURIComponent(callback)}`;
-
-    // Use window.location.replace to prevent back button issues
-    // and ensure immediate redirect without waiting for any pending operations
-    window.location.replace(redirectUrl);
+      // Trigger OIDC logout
+      await userManager.signoutRedirect();
+    } catch (err) {
+      console.error('Logout failed:', err);
+      // Fallback
+      window.location.replace('/');
+    }
   };
 
   const hasRole = (roles: string[]): boolean => {
     if (!user?.role) {
-      console.log('hasRole: No user or role found', { user, roles });
       return false;
     }
 
-    const userRoleSlug = user.role.slug;
+    const { slug: userRoleSlug } = user.role;
     const departmentCode = user.department?.code;
     const isWarehouse = departmentCode === 'WH';
 
     // Direct role match
     if (roles.includes(userRoleSlug)) {
-      // For admin and operator, also check if they have warehouse department
-      if ((userRoleSlug === 'admin' || userRoleSlug === 'operator') && !isWarehouse) {
-        return false;
-      }
-      // Superadmin always has access
-      if (userRoleSlug === 'superadmin') {
-        return true;
-      }
-      // Admin/Operator with warehouse department
-      if ((userRoleSlug === 'admin' || userRoleSlug === 'operator') && isWarehouse) {
-        return true;
-      }
+        if ((userRoleSlug === 'admin' || userRoleSlug === 'operator') && !isWarehouse) {
+            return false;
+        }
+        if (userRoleSlug === 'superadmin') {
+            return true;
+        }
+        if ((userRoleSlug === 'admin' || userRoleSlug === 'operator') && isWarehouse) {
+            return true;
+        }
     }
 
-    // Legacy role support for backward compatibility
-    // admin-warehouse -> admin with department WH
-    // operator-warehouse -> operator with department WH
-    if (roles.includes('admin-warehouse')) {
-      if (userRoleSlug === 'admin' && isWarehouse) {
-        return true;
-      }
-    }
-    if (roles.includes('operator-warehouse')) {
-      if (userRoleSlug === 'operator' && isWarehouse) {
-        return true;
-      }
-    }
+    // Legacy role support
+    if (roles.includes('admin-warehouse') && userRoleSlug === 'admin' && isWarehouse) return true;
+    if (roles.includes('operator-warehouse') && userRoleSlug === 'operator' && isWarehouse) return true;
 
-    const hasAccess = roles.includes(userRoleSlug) ||
-      (roles.includes('admin-warehouse') && userRoleSlug === 'admin' && isWarehouse) ||
-      (roles.includes('operator-warehouse') && userRoleSlug === 'operator' && isWarehouse);
-
-    console.log('hasRole check:', {
-      userRole: userRoleSlug,
-      department: departmentCode,
-      isWarehouse,
-      requiredRoles: roles,
-      hasAccess
-    });
-    return hasAccess;
+    return (
+        roles.includes(userRoleSlug) ||
+        (roles.includes('admin-warehouse') && userRoleSlug === 'admin' && isWarehouse) ||
+        (roles.includes('operator-warehouse') && userRoleSlug === 'operator' && isWarehouse)
+    );
   };
 
   // Initialize auth state
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // Check if SSO is enabled
-        const ssoEnabled = import.meta.env.VITE_SSO_ENABLED === 'true';
-
-        // Check if we're on a public route - don't initialize auth if so
-        // Support hash mode: get path from hash if available, otherwise from pathname
+        // Build public path check
         const currentPath = window.location.hash
           ? window.location.hash.replace('#', '') || '/'
           : window.location.pathname;
-        const publicRoutes = ['/driver', '/arrival-dashboard'];
+        const publicRoutes = ['/driver', '/arrival-dashboard', '/sso/callback', '/callback'];
         const isPublicRoute = publicRoutes.some(route => currentPath.startsWith(route));
-
+        
+        // Skip auth initialization for public routes
         if (isPublicRoute) {
-          // Skip auth initialization for public routes
-          setIsLoading(false);
-          return;
+            setIsLoading(false);
+            return;
         }
 
-        // If SSO is disabled, set a mock token to bypass authentication
+        // Check if SSO is enabled via env
+        const ssoEnabled = import.meta.env.VITE_SSO_ENABLED !== 'false'; // Default true if not set
+
         if (!ssoEnabled) {
-          setToken('non-sso-mode');
-          apiService.setToken('non-sso-mode');
+            console.log('SSO is disabled (Mock Mode). Setting up mock superadmin...');
+            setToken('non-sso-mode');
+            apiService.setToken('non-sso-mode');
 
-          // Set mock superadmin user for full access
-          setUser({
-            id: 1,
-            name: 'Super Admin (Non Auth)',
-            email: 'superadmin@besphere.com',
-            username: 'superadmin',
-            role: {
-              id: 1,
-              name: 'Superadmin',
-              slug: 'superadmin',
-              level: 1
-            }
-            // department is optional and not needed for superadmin
-          });
+            // Set mock superadmin user for full access
+            setUser({
+                id: 1,
+                name: 'Super Admin (Non Auth)',
+                email: 'superadmin@besphere.com',
+                username: 'superadmin',
+                role: {
+                    id: 1,
+                    name: 'Superadmin',
+                    slug: 'superadmin',
+                    level: 1
+                },
+                department: {
+                    id: 1,
+                    name: 'Warehouse',
+                    code: 'WH'
+                }
+            });
 
-          setIsLoading(false);
-          return;
+            setIsLoading(false);
+            return;
         }
 
-        // SSO is enabled - proceed with normal flow
-        const storedToken = localStorage.getItem('auth_token');
-
-        if (storedToken) {
-          setToken(storedToken);
-          apiService.setToken(storedToken);
-
-          // Try to validate token and get user info
+        // Check OIDC user - retry logic for race conditions
+        let oidcUser = await userManager.getUser();
+        
+        // If user not found, wait a bit and retry (in case of race condition after redirect)
+        if (!oidcUser || oidcUser.expired) {
+          console.log("OIDC user not found on first try, retrying...");
+          await new Promise(resolve => setTimeout(resolve, 200));
+          oidcUser = await userManager.getUser();
+        }
+        
+        if (oidcUser && !oidcUser.expired) {
+          console.log("OIDC User found:", oidcUser);
+          setToken(oidcUser.access_token);
+          apiService.setToken(oidcUser.access_token);
+          
+          // Fetch full profile from API if needed
           try {
-            const response = await apiService.getMe();
-            console.log('/user API response:', response);
-            if (response.success && (response.data as any)?.user) {
-              console.log('Setting user from API:', (response.data as any).user);
-              setUser((response.data as any).user);
-            } else {
-              console.log('No user data in response:', response);
-              // If no user data, clear token
-              // Don't redirect here - let ProtectedRoute handle it
-              setToken(null);
-              apiService.clearToken();
-              localStorage.removeItem('auth_token');
-            }
-          } catch (error: any) {
-            // If 401 Unauthorized, token is expired - clear token
-            // Don't redirect here - let ProtectedRoute handle it
-            if (error?.status === 401) {
-              setToken(null);
-              apiService.clearToken();
-              localStorage.removeItem('auth_token');
-            } else {
-              // Other errors - backend might not be available, keep token for now
-              console.warn('Could not validate token with backend:', error);
-            }
+             const response = await apiService.getMe();
+             if (response.success && (response.data as any)?.user) {
+                 setUser((response.data as any).user);
+             }
+          } catch (e) {
+              console.warn("Failed to fetch API profile:", e);
           }
         } else {
-          // No token - don't redirect here, let ProtectedRoute handle it
-          // This allows public routes to work without redirect
+            console.log("No OIDC user found or expired after retry");
+            // Check if token exists in localStorage as fallback
+            const storedToken = localStorage.getItem('auth_token');
+            if (storedToken) {
+              console.log("Found token in localStorage, using it");
+              setToken(storedToken);
+              apiService.setToken(storedToken);
+              try {
+                const response = await apiService.getMe();
+                if (response.success && (response.data as any)?.user) {
+                  setUser((response.data as any).user);
+                }
+              } catch (e) {
+                console.warn("Failed to fetch API profile with stored token:", e);
+              }
+            }
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
-        // Keep app usable; don't force logout here
       } finally {
         setIsLoading(false);
       }
     };
 
+    // Events
+    const onUserLoaded = async (loadedUser: User) => {
+        console.log('OIDC User loaded event', loadedUser);
+        setToken(loadedUser.access_token);
+        apiService.setToken(loadedUser.access_token);
+        try {
+            const response = await apiService.getMe();
+            if (response.success && (response.data as any)?.user) {
+                setUser((response.data as any).user);
+            }
+        } catch (e) {
+            console.warn("Failed to fetch user profile after user loaded:", e);
+        }
+    };
+
+    const onAccessTokenExpired = () => {
+        console.log('Access token expired event');
+        // Let silent renew handle it, or logout if failed
+        // For now, logging out might be too aggressive if silent renew is enabled
+        // userManager.signinSilent() might be triggered automatically
+    };
+
+    // Listen for custom event from SSOCallback
+    const onCustomUserLoaded = async (event: CustomEvent) => {
+        console.log('Custom OIDC user loaded event', event.detail);
+        const userData = event.detail?.user;
+        if (userData && userData.access_token) {
+            setToken(userData.access_token);
+            apiService.setToken(userData.access_token);
+            try {
+                const response = await apiService.getMe();
+                if (response.success && (response.data as any)?.user) {
+                    setUser((response.data as any).user);
+                }
+            } catch (e) {
+                console.warn("Failed to fetch user profile after custom user loaded:", e);
+            }
+        }
+    };
+
+    userManager.events.addUserLoaded(onUserLoaded);
+    userManager.events.addAccessTokenExpired(onAccessTokenExpired);
+    window.addEventListener('oidc-user-loaded', onCustomUserLoaded as unknown as EventListener);
+
     initializeAuth();
+
+    return () => {
+        userManager.events.removeUserLoaded(onUserLoaded);
+        userManager.events.removeAccessTokenExpired(onAccessTokenExpired);
+        window.removeEventListener('oidc-user-loaded', onCustomUserLoaded as unknown as EventListener);
+    };
   }, []);
 
   const value: AuthContextType = {
