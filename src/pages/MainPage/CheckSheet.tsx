@@ -15,7 +15,9 @@ interface CheckSheetData {
   no: number;
   supplier: string;
   dn_number: string;
-  schedule: string;
+  schedule: string; // Kept for backwards compatibility
+  arrivalPlan: string;
+  departurePlan: string;
   driver_name: string;
   plat_no: string;
   dock: string;
@@ -46,7 +48,9 @@ export default function CheckSheet() {
               no: counter++,
               supplier: r.supplier_name || '-',
               dn_number: r.dn_number,
-              schedule: r.schedule || '-',
+              schedule: r.arrival_plan || r.schedule || '-', // Use arrival_plan, fallback to schedule
+              arrivalPlan: r.arrival_plan || r.schedule || '-',
+              departurePlan: r.departure_plan || '-',
               driver_name: r.driver_name || '-',
               plat_no: r.vehicle_plate || '-',
               dock: r.dock || '-',
@@ -120,28 +124,39 @@ export default function CheckSheet() {
     },
     {
       key: "schedule",
-      label: "Schedule",
+      label: "Arrival",
       sortable: true,
+      group: "Plan",
     },
     {
-      key: "driver_name",
-      label: "Driver Name",
+      key: "departurePlan",
+      label: "Departure",
       sortable: true,
-    },
-    {
-      key: "plat_no",
-      label: "Plat No",
-      sortable: true,
+      group: "Plan",
     },
     {
       key: "dock",
       label: "Dock",
       sortable: true,
+      rowSpan: 2,
+    },
+    {
+      key: "driver_name",
+      label: "Driver Name",
+      sortable: true,
+      rowSpan: 2,
+    },
+    {
+      key: "plat_no",
+      label: "Plat No",
+      sortable: true,
+      rowSpan: 2,
     },
     {
       key: "check_labelPort",
-      label: "Label Port",
+      label: "Label Part",
       sortable: true,
+      group: "Item Check",
       render: (value: boolean, _row: CheckSheetData, rowIndex: number = 0) => (
         <div className="flex justify-center">
           <input
@@ -157,6 +172,7 @@ export default function CheckSheet() {
       key: "check_COA_MSDS",
       label: "COA/MSDS",
       sortable: true,
+      group: "Item Check",
       render: (value: boolean, _row: CheckSheetData, rowIndex: number = 0) => (
         <div className="flex justify-center">
           <input
@@ -170,8 +186,9 @@ export default function CheckSheet() {
     },
     {
       key: "check_packing_label",
-      label: "Packing Label",
+      label: "Packing",
       sortable: true,
+      group: "Item Check",
       render: (value: boolean, _row: CheckSheetData, rowIndex: number = 0) => (
         <div className="flex justify-center">
           <input
@@ -193,32 +210,32 @@ export default function CheckSheet() {
       />
       <PageBreadcrumb pageTitle="Check Sheet" />
       <div className="space-y-5 sm:space-y-6">
-       {loading ? (
-  <SkeletonCheckSheet />
-) : (
-  <DataTableOne
-    title="Check Sheet Data"
-    data={data}
-    columns={columns}
-    defaultItemsPerPage={10}
-    itemsPerPageOptions={[5, 10, 15, 20]}
-    defaultSortKey="no"
-    defaultSortOrder="asc"
-    searchable={true}
-    searchPlaceholder="Search DN numbers, supplier, driver..."
-    emptyStateMessage="There are no suppliers who have performed a warehouse check-in today. The data will appear automatically once a supplier completes the check-in."
-    actionButton={
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => navigate("/check-sheet-history")}
-      >
-        <History className="w-4 h-4" />
-        View History
-      </Button>
-    }
-  />
-)}
+        {loading ? (
+          <SkeletonCheckSheet />
+        ) : (
+          <DataTableOne
+            title="Check Sheet Data"
+            data={data}
+            columns={columns}
+            defaultItemsPerPage={10}
+            itemsPerPageOptions={[5, 10, 15, 20]}
+            defaultSortKey="no"
+            defaultSortOrder="asc"
+            searchable={true}
+            searchPlaceholder="Search DN numbers, supplier, driver..."
+            emptyStateMessage="There are no suppliers who have performed a warehouse check-in today. The data will appear automatically once a supplier completes the check-in."
+            actionButton={
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/check-sheet-history")}
+              >
+                <History className="w-4 h-4" />
+                View History
+              </Button>
+            }
+          />
+        )}
       </div>
     </>
   );
