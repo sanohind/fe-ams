@@ -588,7 +588,7 @@ export default function PublicDashboard() {
 
       {/* Header with Date and Time */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="w-full max-w-[98%] 2xl:max-w-[95%] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
@@ -613,7 +613,7 @@ export default function PublicDashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="w-full max-w-[98%] 2xl:max-w-[95%] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-6">
         <div className="space-y-5 sm:space-y-6">
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">

@@ -57,6 +57,16 @@ export default function SupplierContacts() {
 
   const columns: ColumnConfig[] = useMemo(() => [
     {
+      key: "no",
+      label: "No",
+      sortable: false,
+      render: (_value: any, _row: SupplierContact, rowIndex?: number) => (
+        <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">
+          {rowIndex !== undefined ? rowIndex + 1 : "-"}
+        </span>
+      ),
+    },
+    {
       key: "bp_code",
       label: "Supplier Code",
       sortable: true,
@@ -140,21 +150,19 @@ export default function SupplierContacts() {
         <div className="flex items-center gap-2">
           <a
             href={row.phone ? `tel:${row.phone}` : undefined}
-            className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${
-              row.phone
+            className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${row.phone
                 ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30"
                 : "cursor-not-allowed text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800/20"
-            }`}
+              }`}
           >
             Phone
           </a>
           <a
             href={row.emails && row.emails.length > 0 ? `mailto:${row.emails[0]}` : undefined}
-            className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${
-              row.emails && row.emails.length > 0
+            className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${row.emails && row.emails.length > 0
                 ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30"
                 : "cursor-not-allowed text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800/20"
-            }`}
+              }`}
           >
             Email
           </a>
@@ -163,35 +171,35 @@ export default function SupplierContacts() {
     },
   ], []);
 
-return (
-  <>
-    <PageMeta
-      title="Supplier Contact | SPHERE by SANOH Indonesia"
-      description="Supplier contact list from SCM"
-    />
-    <PageBreadcrumb pageTitle="Supplier Contacts" />
+  return (
+    <>
+      <PageMeta
+        title="Supplier Contact | SPHERE by SANOH Indonesia"
+        description="Supplier contact list from SCM"
+      />
+      <PageBreadcrumb pageTitle="Supplier Contacts" />
 
-    <div className="space-y-5 sm:space-y-6">
-      {loading ? (
-        <SkeletonSupplierContacts />
-      ) : (
-        <>
-          {/* Data Table */}
-          <DataTableOne
-            title="Contact List"
-            data={contacts}
-            columns={columns}
-            defaultItemsPerPage={10}
-            itemsPerPageOptions={[5, 10, 15, 20]}
-            defaultSortKey="bp_name"
-            defaultSortOrder="asc"
-            searchable={true}
-            searchPlaceholder="Search suppliers, codes, contacts..."
-          />
-          {error && <div className="text-sm text-red-500">{error}</div>}
-        </>
-      )}
-    </div>
-  </>
-);
+      <div className="space-y-5 sm:space-y-6">
+        {loading ? (
+          <SkeletonSupplierContacts />
+        ) : (
+          <>
+            {/* Data Table */}
+            <DataTableOne
+              title="Contact List"
+              data={contacts}
+              columns={columns}
+              defaultItemsPerPage={10}
+              itemsPerPageOptions={[5, 10, 15, 20]}
+              defaultSortKey="bp_name"
+              defaultSortOrder="asc"
+              searchable={true}
+              searchPlaceholder="Search suppliers, codes, contacts..."
+            />
+            {error && <div className="text-sm text-red-500">{error}</div>}
+          </>
+        )}
+      </div>
+    </>
+  );
 }

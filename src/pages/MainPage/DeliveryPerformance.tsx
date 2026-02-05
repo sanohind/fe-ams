@@ -14,6 +14,8 @@ interface PerformanceData {
   supplier_name?: string;
   period_month: number;
   period_year: number;
+  fulfillment_index: number;
+  delivery_index: number;
   final_score: number;
   performance_grade: string;
   ranking: number;
@@ -200,9 +202,21 @@ const DeliveryPerformance = () => {
 
   const columns: ColumnConfig[] = useMemo(() => [
     {
+      key: "no",
+      label: "No",
+      sortable: false,
+      rowSpan: 2,
+      render: (_value: any, _row: PerformanceData, rowIndex?: number) => (
+        <span className="font-semibold text-gray-900 dark:text-white">
+          {rowIndex !== undefined ? rowIndex + 1 : "-"}
+        </span>
+      ),
+    },
+    {
       key: "bp_code",
       label: "Supplier",
       sortable: true,
+      rowSpan: 2,
       render: (value: string, row: PerformanceData) => (
         <div>
           <div className="font-semibold text-gray-900 dark:text-white">{value}</div>
@@ -211,8 +225,27 @@ const DeliveryPerformance = () => {
       ),
     },
     {
+      key: "fulfillment_index",
+      label: "Fulfillment Index",
+      group: monthNames[month - 1],
+      sortable: true,
+      render: (value: number) => (
+        <span className="font-semibold text-gray-900 dark:text-white">{value?.toFixed(2) || "0.00"}</span>
+      ),
+    },
+    {
+      key: "delivery_index",
+      label: "Delivery Index",
+      group: monthNames[month - 1],
+      sortable: true,
+      render: (value: number) => (
+        <span className="font-semibold text-gray-900 dark:text-white">{value?.toFixed(2) || "0.00"}</span>
+      ),
+    },
+    {
       key: "final_score",
-      label: `${monthNames[month - 1]} - Total Score`,
+      label: "Total Score",
+      group: monthNames[month - 1],
       sortable: true,
       render: (value: number) => (
         <span className="font-semibold text-gray-900 dark:text-white">{value}</span>
@@ -220,7 +253,8 @@ const DeliveryPerformance = () => {
     },
     {
       key: "performance_grade",
-      label: `${monthNames[month - 1]} - Level`,
+      label: "Level",
+      group: monthNames[month - 1],
       sortable: true,
       render: (value: string) => (
         <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${getGradeColor(value)}`}>
@@ -230,7 +264,8 @@ const DeliveryPerformance = () => {
     },
     {
       key: "ranking",
-      label: `${monthNames[month - 1]} - Rank`,
+      label: "Rank",
+      group: monthNames[month - 1],
       sortable: true,
       render: (value: number) => (
         <span className="font-semibold text-gray-900 dark:text-white">#{value}</span>
@@ -238,7 +273,8 @@ const DeliveryPerformance = () => {
     },
     {
       key: "cumulative_final_score",
-      label: `Cumulative ${monthNames[month - 1]} - Total Score`,
+      label: "Total Score",
+      group: `Cumulative ${monthNames[month - 1]}`,
       sortable: true,
       render: (value: number | undefined) => (
         <span className="font-semibold text-gray-900 dark:text-white">{value || "-"}</span>
@@ -246,7 +282,8 @@ const DeliveryPerformance = () => {
     },
     {
       key: "cumulative_performance_grade",
-      label: `Cumulative ${monthNames[month - 1]} - Level`,
+      label: "Level",
+      group: `Cumulative ${monthNames[month - 1]}`,
       sortable: true,
       render: (value: string | undefined) => (
         <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${getGradeColor(value || "")}`}>
@@ -256,7 +293,8 @@ const DeliveryPerformance = () => {
     },
     {
       key: "cumulative_ranking",
-      label: `Cumulative ${monthNames[month - 1]} - Rank`,
+      label: "Rank",
+      group: `Cumulative ${monthNames[month - 1]}`,
       sortable: true,
       render: (value: number | undefined) => (
         <span className="font-semibold text-gray-900 dark:text-white">{value ? `#${value}` : "-"}</span>

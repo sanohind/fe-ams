@@ -39,10 +39,10 @@ class ApiService {
     skipAuthRedirect: boolean = false
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
-    
+
     // Don't set Content-Type if body is FormData (let browser handle it)
     const isFormData = options.body instanceof FormData;
-    
+
     const headers: Record<string, string> = {
       ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       'Accept': 'application/json',
@@ -67,12 +67,12 @@ class ApiService {
           // Only redirect if not on public page
           // Check if we're on a public route
           // Support hash mode: get path from hash if available, otherwise from pathname
-          const currentPath = window.location.hash 
+          const currentPath = window.location.hash
             ? window.location.hash.replace('#', '') || '/'
             : window.location.pathname;
           const publicRoutes = ['/driver', '/arrival-dashboard'];
           const isPublicRoute = publicRoutes.some(route => currentPath.startsWith(route));
-          
+
           if (!isPublicRoute) {
             // Clear token and redirect to login
             this.clearToken();
@@ -84,7 +84,7 @@ class ApiService {
             window.location.href = redirectUrl;
           }
         }
-        
+
         throw {
           success: false,
           message: data.message || 'Request failed',
@@ -150,7 +150,7 @@ class ApiService {
   }
 
   // Arrival Check API
-  async getArrivalCheckList(params?: { date?: string; type?: 'checkin'|'checkout' }, isPublic: boolean = false) {
+  async getArrivalCheckList(params?: { date?: string; type?: 'checkin' | 'checkout' }, isPublic: boolean = false) {
     const query = new URLSearchParams();
     if (params?.date) query.append('date', params.date);
     if (params?.type) query.append('type', params.type);
@@ -197,9 +197,9 @@ class ApiService {
     arrival_id: number;
     dn_number: string;
     check_sheet_data: {
-      label_part: 'OK'|'NOT_OK';
-      coa_msds: 'OK'|'NOT_OK';
-      packing_condition: 'OK'|'NOT_OK';
+      label_part: 'OK' | 'NOT_OK';
+      coa_msds: 'OK' | 'NOT_OK';
+      packing_condition: 'OK' | 'NOT_OK';
       remarks?: string;
     };
   }) {
@@ -223,9 +223,9 @@ class ApiService {
     }
     const qs = query.toString() ? `?${query.toString()}` : '';
     const token = this.token || localStorage.getItem('auth_token');
-    
+
     const url = `${this.baseURL}/check-sheet/download-pdf${qs}`;
-    
+
     // Fetch PDF with authorization
     const response = await fetch(url, {
       method: 'GET',
@@ -234,7 +234,7 @@ class ApiService {
         'Accept': 'application/pdf',
       },
     });
-    
+
     if (!response.ok) {
       let errorMessage = 'Failed to download PDF';
       try {
@@ -245,7 +245,7 @@ class ApiService {
       }
       throw new Error(errorMessage);
     }
-    
+
     // Check if response is actually PDF
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/pdf')) {
@@ -253,16 +253,16 @@ class ApiService {
       const blob = await response.blob();
       const pdfBlob = new Blob([blob], { type: 'application/pdf' });
       const blobUrl = window.URL.createObjectURL(pdfBlob);
-      
+
       // Open blob URL directly in new window
       // Modern browsers will automatically use PDF viewer for blob URLs with PDF MIME type
       const newWindow = window.open(blobUrl, '_blank');
-      
+
       if (!newWindow) {
         window.URL.revokeObjectURL(blobUrl);
         throw new Error('Please allow popups to view PDF');
       }
-      
+
       // Keep blob URL alive while window is open
       // Check periodically if window is closed
       const checkInterval = setInterval(() => {
@@ -278,7 +278,7 @@ class ApiService {
           setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
         }
       }, 1000);
-      
+
       // Also revoke after a long timeout as safety measure
       setTimeout(() => {
         try {
@@ -339,8 +339,8 @@ class ApiService {
 
   async createArrivalSchedule(data: {
     bp_code: string;
-    day_name: 'monday'|'tuesday'|'wednesday'|'thursday'|'friday'|'saturday'|'sunday';
-    arrival_type: 'regular'|'additional';
+    day_name: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+    arrival_type: 'regular' | 'additional';
     arrival_time: string; // HH:mm
     departure_time?: string; // HH:mm
     dock?: string;
@@ -355,8 +355,8 @@ class ApiService {
 
   async updateArrivalSchedule(id: number, data: Partial<{
     bp_code: string;
-    day_name: 'monday'|'tuesday'|'wednesday'|'thursday'|'friday'|'saturday'|'sunday';
-    arrival_type: 'regular'|'additional';
+    day_name: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+    arrival_type: 'regular' | 'additional';
     arrival_time: string;
     departure_time?: string;
     dock?: string;
@@ -488,7 +488,7 @@ class ApiService {
         }
       });
     }
-    
+
     const queryString = queryParams.toString();
     return this.request(`/level-stock${queryString ? `?${queryString}` : ''}`);
   }
@@ -514,7 +514,7 @@ class ApiService {
         }
       });
     }
-    
+
     const queryString = queryParams.toString();
     return this.request(`/arrival-schedule${queryString ? `?${queryString}` : ''}`);
   }
@@ -573,7 +573,7 @@ class ApiService {
         }
       });
     }
-    
+
     const queryString = queryParams.toString();
     return this.request(`/sync/logs${queryString ? `?${queryString}` : ''}`);
   }
@@ -611,6 +611,14 @@ class ApiService {
     return response;
   }
 
+  // Re-calculate Arrival Status API
+  async recalculateArrivalStatus(date: string) {
+    return this.request('/arrival-schedule/recalculate-status', {
+      method: 'POST',
+      body: JSON.stringify({ date }),
+    });
+  }
+
   // Delivery Performance API
   async getDeliveryPerformance(params?: {
     month?: number;
@@ -627,7 +635,7 @@ class ApiService {
         }
       });
     }
-    
+
     const queryString = queryParams.toString();
     return this.request(`/delivery-performance${queryString ? `?${queryString}` : ''}`);
   }
@@ -644,7 +652,7 @@ class ApiService {
         }
       });
     }
-    
+
     const queryString = queryParams.toString();
     return this.request(`/delivery-performance/${bpCode}${queryString ? `?${queryString}` : ''}`);
   }
@@ -662,7 +670,7 @@ class ApiService {
         }
       });
     }
-    
+
     const queryString = queryParams.toString();
     return this.request(`/delivery-performance/top-performers${queryString ? `?${queryString}` : ''}`);
   }
@@ -679,7 +687,7 @@ class ApiService {
         }
       });
     }
-    
+
     const queryString = queryParams.toString();
     return this.request(`/delivery-performance/statistics${queryString ? `?${queryString}` : ''}`);
   }

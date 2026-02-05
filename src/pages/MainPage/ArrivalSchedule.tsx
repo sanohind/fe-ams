@@ -13,6 +13,7 @@ import DatePicker from "../../components/form/date-picker";
 import { SkeletonArrivalSchedule } from "../../components/ui/skeleton/Skeleton";
 import apiService from "../../services/api";
 import Button from "../../components/ui/button/Button";
+import { useToast } from "../../hooks/useToast";
 
 // Interface untuk DN Item
 interface DNItem {
@@ -26,7 +27,9 @@ interface DNItem {
 interface DashboardDataItem {
   no: number;
   supplier: string;
-  schedule: string;
+  schedule: string; // Kept for backwards compatibility
+  arrivalPlan: string;
+  departurePlan: string;
   dock: string;
   platNumber: string;
   securityTimeIn: string;
@@ -161,6 +164,8 @@ export default function ArrivalSchedule() {
   const [selectedCalendarEvent, setSelectedCalendarEvent] = useState<CalendarEvent | null>(null);
   const [eventPopoverPosition, setEventPopoverPosition] = useState<{ x: number; y: number } | null>(null);
   const [downloadingReport, setDownloadingReport] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
+  const toast = useToast();
 
   // Check if selected date is not today
   const isNotToday = () => {
@@ -192,6 +197,38 @@ export default function ArrivalSchedule() {
       alert('Failed to download daily report. Please try again.');
     } finally {
       setDownloadingReport(false);
+    }
+  };
+
+  // Re-calculate arrival status
+  const handleRecalculateStatus = async () => {
+    try {
+      setRecalculating(true);
+      const response = await apiService.recalculateArrivalStatus(selectedDate);
+
+      if (response.success) {
+        toast.success('Arrival status recalculated successfully', {
+          title: 'Recalculation Complete',
+        });
+        // Refresh data after recalculation
+        const fetchResponse = await apiService.getScheduleData(selectedDate);
+        if (fetchResponse.success && fetchResponse.data) {
+          const fetchData = fetchResponse.data as any;
+          const regular = transformApiDataToDashboard(fetchData.regular_arrivals || []);
+          const additional = transformApiDataToDashboard(fetchData.additional_arrivals || []);
+          setRegularData(regular);
+          setAdditionalData(additional);
+        }
+      } else {
+        throw new Error(response.message || 'Failed to re-calculate status');
+      }
+    } catch (err: any) {
+      console.error('Error re-calculating status:', err);
+      toast.error(err.message || 'Failed to re-calculate arrival status. Please try again.', {
+        title: 'Recalculation Failed',
+      });
+    } finally {
+      setRecalculating(false);
     }
   };
 
@@ -426,7 +463,9 @@ export default function ArrivalSchedule() {
       return {
         no: index + 1,
         supplier: item.supplier_name || item.bp_code || '-',
-        schedule: scheduleTime,
+        schedule: item.arrival_plan || scheduleTime, // Use arrival_plan, fallback to schedule for backwards compatibility
+        arrivalPlan: item.arrival_plan || scheduleTime,
+        departurePlan: item.departure_plan || '-',
         dock: item.dock || '-',
         platNumber: item.vehicle_plate || '-',
         securityTimeIn: item.security_time_in || '-',
@@ -518,9 +557,15 @@ export default function ArrivalSchedule() {
     },
     {
       key: "schedule",
-      label: "Schedule",
+      label: "Arrival",
       sortable: true,
-      rowSpan: 2,
+      group: "Plan",
+    },
+    {
+      key: "departurePlan",
+      label: "Departure",
+      sortable: true,
+      group: "Plan",
     },
     {
       key: "dock",
@@ -812,29 +857,57 @@ export default function ArrivalSchedule() {
 
         {/* Download Daily Report Button */}
         {isNotToday() && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDownloadReport}
-            disabled={downloadingReport}
-          >
-            {downloadingReport ? "Downloading..." : "Download Report"}
-            <svg
-              className="fill-current"
-              width="20"
-              height="20"
-              viewBox="0 0 20 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadReport}
+              disabled={downloadingReport}
             >
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M10.0018 14.083C9.7866 14.083 9.59255 13.9924 9.45578 13.8472L5.61586 10.0097C5.32288 9.71688 5.32272 9.242 5.61552 8.94902C5.90832 8.65603 6.3832 8.65588 6.67618 8.94868L9.25182 11.5227L9.25182 3.33301C9.25182 2.91879 9.5876 2.58301 10.0018 2.58301C10.416 2.58301 10.7518 2.91879 10.7518 3.33301L10.7518 11.5193L13.3242 8.94866C13.6172 8.65587 14.0921 8.65604 14.3849 8.94903C14.6777 9.24203 14.6775 9.7169 14.3845 10.0097L10.5761 13.8154C10.4385 13.979 10.2323 14.083 10.0018 14.083ZM4.0835 13.333C4.0835 12.9188 3.74771 12.583 3.3335 12.583C2.91928 12.583 2.5835 12.9188 2.5835 13.333V15.1663C2.5835 16.409 3.59086 17.4163 4.8335 17.4163H15.1676C16.4102 17.4163 17.4176 16.409 17.4176 15.1663V13.333C17.4176 12.9188 17.0818 12.583 16.6676 12.583C16.2533 12.583 15.9176 12.9188 15.9176 13.333V15.1663C15.9176 15.5806 15.5818 15.9163 15.1676 15.9163H4.8335C4.41928 15.9163 4.0835 15.5806 4.0835 15.1663V13.333Z"
-                fill="currentColor"
-              />
-            </svg>
-          </Button>
+              {downloadingReport ? "Downloading..." : "Download Report"}
+              <svg
+                className="fill-current"
+                width="20"
+                height="20"
+                viewBox="0 0 20 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  fillRule="evenodd"
+                  clipRule="evenodd"
+                  d="M10.0018 14.083C9.7866 14.083 9.59255 13.9924 9.45578 13.8472L5.61586 10.0097C5.32288 9.71688 5.32272 9.242 5.61552 8.94902C5.90832 8.65603 6.3832 8.65588 6.67618 8.94868L9.25182 11.5227L9.25182 3.33301C9.25182 2.91879 9.5876 2.58301 10.0018 2.58301C10.416 2.58301 10.7518 2.91879 10.7518 3.33301L10.7518 11.5193L13.3242 8.94866C13.6172 8.65587 14.0921 8.65604 14.3849 8.94903C14.6777 9.24203 14.6775 9.7169 14.3845 10.0097L10.5761 13.8154C10.4385 13.979 10.2323 14.083 10.0018 14.083ZM4.0835 13.333C4.0835 12.9188 3.74771 12.583 3.3335 12.583C2.91928 12.583 2.5835 12.9188 2.5835 13.333V15.1663C2.5835 16.409 3.59086 17.4163 4.8335 17.4163H15.1676C16.4102 17.4163 17.4176 16.409 17.4176 15.1663V13.333C17.4176 12.9188 17.0818 12.583 16.6676 12.583C16.2533 12.583 15.9176 12.9188 15.9176 13.333V15.1663C15.9176 15.5806 15.5818 15.9163 15.1676 15.9163H4.8335C4.41928 15.9163 4.0835 15.5806 4.0835 15.1663V13.333Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </Button>
+
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleRecalculateStatus}
+              disabled={recalculating}
+            >
+              {recalculating ? "Re-calculating..." : "Re-calculate Status"}
+              <svg
+                className="fill-current"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M4 12C4 7.58172 7.58172 4 12 4C14.5264 4 16.7792 5.17108 18.2454 7H16C15.4477 7 15 7.44772 15 8C15 8.55228 15.4477 9 16 9H20.5C21.0523 9 21.5 8.55228 21.5 8V3.5C21.5 2.94772 21.0523 2.5 20.5 2.5C19.9477 2.5 19.5 2.94772 19.5 3.5V5.26756C17.6318 3.25107 14.9602 2 12 2C6.47715 2 2 6.47715 2 12C2 12.5523 2.44772 13 3 13C3.55228 13 4 12.5523 4 12Z"
+                  fill="currentColor"
+                />
+                <path
+                  d="M20 12C20 16.4183 16.4183 20 12 20C9.47362 20 7.22075 18.8289 5.75463 17H8C8.55228 17 9 16.5523 9 16C9 15.4477 8.55228 15 8 15H3.5C2.94772 15 2.5 15.4477 2.5 16V20.5C2.5 21.0523 2.94772 21.5 3.5 21.5C4.05228 21.5 4.5 21.0523 4.5 20.5V18.7324C6.36824 20.7489 9.03976 22 12 22C17.5228 22 22 17.5228 22 12C22 11.4477 21.5523 11 21 11C20.4477 11 20 11.4477 20 12Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </Button>
+          </div>
         )}
       </div>
 

@@ -7,7 +7,7 @@ import DatePicker from "../../components/form/date-picker";
 import { SkeletonCheckSheetHistory } from "../../components/ui/skeleton/Skeleton";
 import apiService from "../../services/api";
 import { useToast } from "../../hooks/useToast";
-import DataTableThree, { ColumnConfig } from "../../components/tables/DataTables/TableThree/DataTableThree";
+import DataTableOne, { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
 import Checkbox from "../../components/form/input/Checkbox";
 
 interface CheckSheetHistoryData {
@@ -18,8 +18,12 @@ interface CheckSheetHistoryData {
   dn_number: string | null;
   supplier_name: string;
   bp_code: string;
-  schedule: string | null;
+  schedule: string | null; // Kept for backwards compatibility
+  arrivalPlan: string | null;
+  departurePlan: string | null;
   actual_arrival_time: string | null;
+  warehouseCheckinTime: string | null;
+  warehouseCheckoutTime: string | null;
   driver_name: string | null;
   vehicle_plate: string | null;
   dock: string | null;
@@ -78,15 +82,7 @@ export default function CheckSheetHistory() {
     ].join("-");
   }, []);
 
-  // Checkbox handlers
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedItems(new Set(data.map((item) => getRowKey(item))));
-    } else {
-      setSelectedItems(new Set());
-    }
-  };
-
+  // Checkbox handlers - kept for PDF download selection
   const handleSelectItem = (
     item: CheckSheetHistoryData,
     checked: boolean
@@ -100,10 +96,6 @@ export default function CheckSheetHistory() {
     }
     setSelectedItems(newSelected);
   };
-
-  const isAllSelected =
-    data.length > 0 &&
-    data.every((item) => selectedItems.has(getRowKey(item)));
 
   const isItemSelected = useCallback(
     (item: CheckSheetHistoryData) => {
@@ -198,9 +190,9 @@ export default function CheckSheetHistory() {
       toast.error(
         `${errorMessage}\nIf PDF library is unavailable, HTML preview will open in a new window.`,
         {
-        title: "Download Failed",
-        autoClose: 5000,
-      });
+          title: "Download Failed",
+          autoClose: 5000,
+        });
     } finally {
       setDownloadingPdf(false);
     }
@@ -233,6 +225,7 @@ export default function CheckSheetHistory() {
     {
       key: "dn_number",
       label: "DN Number",
+      rowSpan: 2,
       render: (value: string, row: CheckSheetHistoryData) => (
         <div className="flex gap-3">
           <div className="mt-1">
@@ -252,6 +245,7 @@ export default function CheckSheetHistory() {
     {
       key: "supplier_name",
       label: "Supplier",
+      rowSpan: 2,
       render: (value: string, row: CheckSheetHistoryData) => (
         <div>
           <p className="font-medium">{value}</p>
@@ -262,16 +256,29 @@ export default function CheckSheetHistory() {
       ),
     },
     {
-      key: "schedule",
-      label: "Scheduled Time",
+      key: "arrivalPlan",
+      label: "Arrival",
+      group: "Plan",
     },
     {
-      key: "actual_arrival_time",
-      label: "Actual Arrival",
+      key: "departurePlan",
+      label: "Departure",
+      group: "Plan",
+    },
+    {
+      key: "warehouseCheckinTime",
+      label: "Arrival",
+      group: "Actual",
+    },
+    {
+      key: "warehouseCheckoutTime",
+      label: "Departure",
+      group: "Actual",
     },
     {
       key: "total_qty_dn",
-      label: "DN Qty",
+      label: "DN",
+      group: "Qty",
       render: (value: number | null) => (
         <span className="font-normal text-gray-800 text-theme-sm dark:text-white/90">
           {value !== null ? value.toLocaleString() : "-"}
@@ -280,7 +287,8 @@ export default function CheckSheetHistory() {
     },
     {
       key: "actual_qty",
-      label: "Actual Qty",
+      label: "Actual",
+      group: "Qty",
       render: (value: number | null) => (
         <span className="font-normal text-gray-800 text-theme-sm dark:text-white/90">
           {value !== null ? value.toLocaleString() : "-"}
@@ -290,25 +298,30 @@ export default function CheckSheetHistory() {
     {
       key: "dock",
       label: "Dock",
+      rowSpan: 2,
     },
     {
       key: "label_part_status",
       label: "Label Part",
+      group: "Item Check",
       render: (value: string) => getStatusBadge(value),
     },
     {
       key: "coa_msds_status",
       label: "COA/MSDS",
+      group: "Item Check",
       render: (value: string) => getStatusBadge(value),
     },
     {
       key: "packing_condition_status",
       label: "Packing",
+      group: "Item Check",
       render: (value: string) => getStatusBadge(value),
     },
     {
       key: "pic_name",
       label: "Receiving PIC",
+      rowSpan: 2,
     },
   ], [isItemSelected, handleSelectItem]);
 
@@ -318,7 +331,7 @@ export default function CheckSheetHistory() {
         title="Check Sheet History | SPHERE by SANOH Indonesia"
         description="Check sheet history page for SPHERE by SANOH Indonesia"
       />
-      <PageBreadcrumb 
+      <PageBreadcrumb
         pageTitle="Check Sheet History"
         breadcrumbs={[
           { label: "Home", path: "/" },
@@ -327,83 +340,78 @@ export default function CheckSheetHistory() {
         ]}
       />
 
-{loading ? (
-  <SkeletonCheckSheetHistory />
-) : (
-  <>
-    {/* Date Picker and Download Button */}
-    <div className="flex justify-between items-center mb-4 gap-4">
-      <div className="flex items-center gap-4">
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Select Date:
-        </label>
-        <div className="w-full sm:w-[250px]">
-          <DatePicker
-            id="check-sheet-history-date-picker"
-            mode="single"
-            placeholder="Select date"
-            defaultDate={selectedDate}
-            onChange={(selectedDates, dateStr) => {
-              if (selectedDates && selectedDates.length > 0) {
-                const date = selectedDates[0];
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, "0");
-                const day = String(date.getDate()).padStart(2, "0");
-                const formattedDate = `${year}-${month}-${day}`;
-                setSelectedDate(formattedDate);
-              } else if (dateStr) {
-                setSelectedDate(dateStr);
-              }
-            }}
-          />
-        </div>
-      </div>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleDownloadPdf}
-        disabled={downloadingPdf}
-      >
-        {downloadingPdf ? "Downloading..." : "Download PDF"}
-        <svg
-          className="fill-current"
-          width="20"
-          height="20"
-          viewBox="0 0 20 20"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            fillRule="evenodd"
-            clipRule="evenodd"
-            d="M10.0018 14.083C9.7866 14.083 9.59255 13.9924 9.45578 13.8472L5.61586 10.0097C5.32288 9.71688 5.32272 9.242 5.61552 8.94902C5.90832 8.65603 6.3832 8.65588 6.67618 8.94868L9.25182 11.5227L9.25182 3.33301C9.25182 2.91879 9.5876 2.58301 10.0018 2.58301C10.416 2.58301 10.7518 2.91879 10.7518 3.33301L10.7518 11.5193L13.3242 8.94866C13.6172 8.65587 14.0921 8.65604 14.3849 8.94903C14.6777 9.24203 14.6775 9.7169 14.3845 10.0097L10.5761 13.8154C10.4385 13.979 10.2323 14.083 10.0018 14.083ZM4.0835 13.333C4.0835 12.9188 3.74771 12.583 3.3335 12.583C2.91928 12.583 2.5835 12.9188 2.5835 13.333V15.1663C2.5835 16.409 3.59086 17.4163 4.8335 17.4163H15.1676C16.4102 17.4163 17.4176 16.409 17.4176 15.1663V13.333C17.4176 12.9188 17.0818 12.583 16.6676 12.583C16.2533 12.583 15.9176 12.9188 15.9176 13.333V15.1663C15.9176 15.5806 15.5818 15.9163 15.1676 15.9163H4.8335C4.41928 15.9163 4.0835 15.5806 4.0835 15.1663V13.333Z"
-            fill="currentColor"
-          />
-        </svg>
-      </Button>
-    </div>
+      {loading && <SkeletonCheckSheetHistory />}
 
-    {error && (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
-        {error}
-      </div>
-    )}
-  </>
-)}
+      {!loading && error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+          {error}
+        </div>
+      )}
 
       {!loading && !error && (
-        <DataTableThree
-          data={data}
-          columns={columns}
-          defaultItemsPerPage={10}
-          itemsPerPageOptions={[10, 20, 50]}
-          searchable={true}
-          searchPlaceholder="Search DN numbers, supplier, driver..."
-          onSelectAll={handleSelectAll}
-          isAllSelected={isAllSelected}
-          getRowKey={getRowKey}
-          emptyStateMessage="No check sheet history found for this date"
-        />
+        <>
+          {/* Date Picker and Download Button */}
+          <div className="flex justify-between items-center mb-4 gap-4">
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Select Date:
+              </label>
+              <div className="w-full sm:w-[250px]">
+                <DatePicker
+                  id="check-sheet-history-date-picker"
+                  mode="single"
+                  placeholder="Select date"
+                  defaultDate={selectedDate}
+                  onChange={(selectedDates, dateStr) => {
+                    if (selectedDates && selectedDates.length > 0) {
+                      const date = selectedDates[0];
+                      const year = date.getFullYear();
+                      const month = String(date.getMonth() + 1).padStart(2, "0");
+                      const day = String(date.getDate()).padStart(2, "0");
+                      const formattedDate = `${year}-${month}-${day}`;
+                      setSelectedDate(formattedDate);
+                    } else if (dateStr) {
+                      setSelectedDate(dateStr);
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+            >
+              {downloadingPdf ? "Downloading..." : "Download PDF"}
+              <svg
+                className="fill-current"
+                width="20"
+                height="20"
+                viewBox="0 0 20 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  fillRule="evenodd"
+                  clipRule="evenodd"
+                  d="M10.0018 14.083C9.7866 14.083 9.59255 13.9924 9.45578 13.8472L5.61586 10.0097C5.32288 9.71688 5.32272 9.242 5.61552 8.94902C5.90832 8.65603 6.3832 8.65588 6.67618 8.94868L9.25182 11.5227L9.25182 3.33301C9.25182 2.91879 9.5876 2.58301 10.0018 2.58301C10.416 2.58301 10.7518 2.91879 10.7518 3.33301L10.7518 11.5193L13.3242 8.94866C13.6172 8.65587 14.0921 8.65604 14.3849 8.94903C14.6777 9.24203 14.6775 9.7169 14.3845 10.0097L10.5761 13.8154C10.4385 13.979 10.2323 14.083 10.0018 14.083ZM4.0835 13.333C4.0835 12.9188 3.74771 12.583 3.3335 12.583C2.91928 12.583 2.5835 12.9188 2.5835 13.333V15.1663C2.5835 16.409 3.59086 17.4163 4.8335 17.4163H15.1676C16.4102 17.4163 17.4176 16.409 17.4176 15.1663V13.333C17.4176 12.9188 17.0818 12.583 16.6676 12.583C16.2533 12.583 15.9176 12.9188 15.9176 13.333V15.1663C15.9176 15.5806 15.5818 15.9163 15.1676 15.9163H4.8335C4.41928 15.9163 4.0835 15.5806 4.0835 15.1663V13.333Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </Button>
+          </div>
+
+          <DataTableOne
+            data={data}
+            columns={columns}
+            defaultItemsPerPage={10}
+            itemsPerPageOptions={[10, 20, 50]}
+            searchable={true}
+            searchPlaceholder="Search DN numbers, supplier, driver..."
+            emptyStateMessage="No check sheet history found for this date"
+          />
+        </>
       )}
     </div>
   );

@@ -90,7 +90,7 @@ export default function ArrivalManage() {
   const columns: ColumnConfig[] = useMemo(() => [
     {
       key: "id",
-      label: "ID",
+      label: "No",
       sortable: true,
     },
     {
@@ -110,6 +110,14 @@ export default function ArrivalManage() {
       key: "arrival_time",
       label: "Arrival",
       sortable: true,
+    },
+    {
+      key: "departure_time",
+      label: "Departure",
+      sortable: true,
+      render: (value: string | null) => {
+        return <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">{value || '-'}</span>;
+      },
     },
     {
       key: "day_name",
@@ -135,27 +143,6 @@ export default function ArrivalManage() {
         };
         const label = value.charAt(0).toUpperCase() + value.slice(1);
         return <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${colors[value] || "bg-gray-100 text-gray-800"}`}>{label}</span>;
-      },
-    },
-    {
-      key: "updated_at",
-      label: "Last Modified",
-      sortable: true,
-      render: (value: string) => {
-        if (!value) return <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">-</span>;
-        try {
-          const date = new Date(value);
-          const formatted = date.toLocaleDateString('id-ID', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          });
-          return <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">{formatted}</span>;
-        } catch {
-          return <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">{value}</span>;
-        }
       },
     },
     {
@@ -189,35 +176,35 @@ export default function ArrivalManage() {
       <PageBreadcrumb pageTitle="Arrival Management" />
 
       <div className="space-y-5 sm:space-y-6">
-{loading ? (
-  <SkeletonArrivalManage />
-) : (
-  <>
-    {/* Data Table with Action Button */}
-    <DataTableOne
-      title="Arrival Schedule List"
-      data={data}
-      columns={columns}
-      defaultItemsPerPage={10}
-      itemsPerPageOptions={[5, 10, 15, 20]}
-      defaultSortKey="id"
-      defaultSortOrder="asc"
-      searchable={true}
-      searchPlaceholder="Search suppliers, schedules, docks..."
-      actionButton={
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={handleAddNew}
-        >
-          <Plus className="w-4 h-4" />
-          Add New Arrival
-        </Button>
-      }
-    />
-    {error && <div className="text-sm text-red-500">{error}</div>}
-  </>
-)}
+        {loading ? (
+          <SkeletonArrivalManage />
+        ) : (
+          <>
+            {/* Data Table with Action Button */}
+            <DataTableOne
+              title="Arrival Schedule List"
+              data={data}
+              columns={columns}
+              defaultItemsPerPage={10}
+              itemsPerPageOptions={[5, 10, 15, 20]}
+              defaultSortKey="id"
+              defaultSortOrder="asc"
+              searchable={true}
+              searchPlaceholder="Search suppliers, schedules, docks..."
+              actionButton={
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleAddNew}
+                >
+                  <Plus className="w-4 h-4" />
+                  Add New Arrival
+                </Button>
+              }
+            />
+            {error && <div className="text-sm text-red-500">{error}</div>}
+          </>
+        )}
       </div>
       <ConfirmationPopup
         isOpen={!!deleteTarget}
