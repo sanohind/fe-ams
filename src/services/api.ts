@@ -519,6 +519,28 @@ class ApiService {
     return this.request(`/arrival-schedule${queryString ? `?${queryString}` : ''}`);
   }
 
+  async getArrivalScheduleRange(params: {
+    date_from: string;
+    date_to: string;
+    bp_code?: string;
+  }) {
+    const query = new URLSearchParams();
+    query.append('date_from', params.date_from);
+    query.append('date_to', params.date_to);
+    if (params.bp_code) query.append('bp_code', params.bp_code);
+    return this.request(`/arrival-schedule/range?${query.toString()}`);
+  }
+
+  async getArrivalScheduleByDate(params: {
+    date: string;
+    bp_code?: string;
+  }) {
+    const query = new URLSearchParams();
+    query.append('date', params.date);
+    if (params.bp_code) query.append('bp_code', params.bp_code);
+    return this.request(`/arrival-schedule?${query.toString()}`);
+  }
+
   async updateArrivalStatus(id: number, data: {
     actual_arrival_time?: string;
     status?: string;
@@ -609,6 +631,70 @@ class ApiService {
     }
 
     return response;
+  }
+
+  async getDailyReportSuppliers() {
+    return this.request('/daily-report/suppliers');
+  }
+
+  async downloadCustomDailyReport(params: {
+    date_from: string;
+    date_to: string;
+    bp_code?: string;
+  }) {
+    const token = this.token || localStorage.getItem('auth_token');
+    const query = new URLSearchParams();
+    query.append('date_from', params.date_from);
+    query.append('date_to', params.date_to);
+    if (params.bp_code) query.append('bp_code', params.bp_code);
+    const url = `${this.baseURL}/daily-report/generate-custom?${query.toString()}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+        'Accept': 'application/pdf',
+      },
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to generate custom report';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch (e) {
+        errorMessage = `Failed to generate custom report: ${response.status} ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/pdf')) {
+      const blob = await response.blob();
+      const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+      const blobUrl = window.URL.createObjectURL(pdfBlob);
+      const newWindow = window.open(blobUrl, '_blank');
+      if (!newWindow) {
+        window.URL.revokeObjectURL(blobUrl);
+        throw new Error('Please allow popups to view PDF');
+      }
+      const checkInterval = setInterval(() => {
+        try {
+          if (newWindow.closed) {
+            window.URL.revokeObjectURL(blobUrl);
+            clearInterval(checkInterval);
+          }
+        } catch (e) {
+          clearInterval(checkInterval);
+          setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
+        }
+      }, 1000);
+      setTimeout(() => {
+        try { if (newWindow.closed) window.URL.revokeObjectURL(blobUrl); } catch (e) { }
+      }, 300000);
+    } else {
+      throw new Error('Failed to generate PDF: unexpected response format');
+    }
   }
 
   // Re-calculate Arrival Status API
