@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { useParams, useLocation, useNavigate } from "react-router";
+import { useParams, useLocation } from "react-router";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
-import { SkeletonDataTable } from "../../components/ui/skeleton/Skeleton";
+import { SkeletonDeliveryPerformanceDetail } from "../../components/ui/skeleton/Skeleton";
 import apiService from "../../services/api";
 import { useToast } from "../../hooks/useToast";
-import { ArrowLeft, TrendingUp, Award, AlertCircle, BarChart3 } from "lucide-react";
+import { TrendingUp, Award, AlertCircle, BarChart3 } from "lucide-react";
 
 interface PerformanceDetail {
   id: number;
@@ -36,7 +36,6 @@ interface SupplierInfo {
 const DeliveryPerformanceDetail = () => {
   const { bpCode } = useParams<{ bpCode: string }>();
   const location = useLocation();
-  const navigate = useNavigate();
   const toast = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -59,14 +58,25 @@ const DeliveryPerformanceDetail = () => {
         setLoading(true);
         setError(null);
 
-        const res = await apiService.getDeliveryPerformanceDetail(bpCode, {
-          month,
-          year,
-        });
+        const res = await apiService.getDeliveryPerformanceDetail(bpCode, { month, year });
 
         if (res.success && res.data) {
           const data = res.data as any;
-          setPerformance(data.performance as PerformanceDetail);
+          const raw = data.performance as any;
+          setPerformance({
+            ...raw,
+            total_dn_qty: Number(raw.total_dn_qty ?? 0),
+            total_receipt_qty: Number(raw.total_receipt_qty ?? 0),
+            fulfillment_percentage: Number(raw.fulfillment_percentage ?? 0),
+            fulfillment_index: Number(raw.fulfillment_index ?? 0),
+            total_deliveries: Number(raw.total_deliveries ?? 0),
+            on_time_deliveries: Number(raw.on_time_deliveries ?? 0),
+            total_delay_days: Number(raw.total_delay_days ?? 0),
+            delivery_index: Number(raw.delivery_index ?? 0),
+            total_index: Number(raw.total_index ?? 0),
+            final_score: Number(raw.final_score ?? 0),
+            ranking: Number(raw.ranking ?? 0),
+          });
           setSupplier(data.supplier as SupplierInfo);
         } else {
           setError(res.message || "Failed to fetch performance detail");
@@ -85,29 +95,20 @@ const DeliveryPerformanceDetail = () => {
 
   const getGradeColor = (grade: string) => {
     switch (grade) {
-      case "A":
-        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
-      case "B":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
-      case "C":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
-      case "D":
-        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400";
+      case "A": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+      case "B": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+      case "C": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+      case "D": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+      default: return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400";
     }
   };
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case "best":
-        return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400";
-      case "medium":
-        return "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400";
-      case "worst":
-        return "bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400";
+      case "best": return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400";
+      case "medium": return "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400";
+      case "worst": return "bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400";
+      default: return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400";
     }
   };
 
@@ -116,12 +117,18 @@ const DeliveryPerformanceDetail = () => {
     "July", "August", "September", "October", "November", "December",
   ];
 
+  const breadcrumbs = [
+    { label: "Home", path: "/" },
+    { label: "Delivery Performance", path: "/delivery-performance" },
+    { label: "Detail" },
+  ];
+
   if (loading) {
     return (
       <>
         <PageMeta title="Delivery Performance Detail" description="View detailed delivery performance metrics" />
-        <PageBreadcrumb pageTitle="Delivery Performance Detail" />
-        <SkeletonDataTable />
+        <PageBreadcrumb pageTitle="Delivery Performance Detail" breadcrumbs={breadcrumbs} />
+        <SkeletonDeliveryPerformanceDetail />
       </>
     );
   }
@@ -130,204 +137,190 @@ const DeliveryPerformanceDetail = () => {
     return (
       <>
         <PageMeta title="Delivery Performance Detail" description="View detailed delivery performance metrics" />
-        <PageBreadcrumb pageTitle="Delivery Performance Detail" />
-        <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 p-6">
+        <PageBreadcrumb pageTitle="Delivery Performance Detail" breadcrumbs={breadcrumbs} />
+        <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-6">
           <div className="flex items-center gap-3 text-red-800 dark:text-red-400">
             <AlertCircle className="w-5 h-5" />
             <span>{error || "Performance data not found"}</span>
           </div>
-          <button
-            onClick={() => navigate("/delivery-performance")}
-            className="mt-4 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition"
-          >
-            Back to List
-          </button>
         </div>
       </>
     );
   }
 
+  const onTimePct =
+    performance.total_deliveries > 0
+      ? ((performance.on_time_deliveries / performance.total_deliveries) * 100).toFixed(2)
+      : "0";
+
   return (
     <>
       <PageMeta title="Delivery Performance Detail" description="View detailed delivery performance metrics" />
-      <PageBreadcrumb pageTitle="Delivery Performance Detail" />
+      <PageBreadcrumb pageTitle="Delivery Performance Detail" breadcrumbs={breadcrumbs} />
 
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <button
-            onClick={() => navigate("/delivery-performance")}
-            className="flex items-center gap-2 px-4 py-2 text-blue-500 hover:text-blue-600 transition"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Back to List
-          </button>
-          <div className="text-right">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {monthNames[month - 1]} {year}
-            </p>
-          </div>
-        </div>
 
-        {/* Supplier Info */}
-        <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* ── Supplier Info ─────────────────────────────────────── */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Supplier Code</p>
-              <p className="text-xl font-semibold text-gray-900 dark:text-white">{performance.bp_code}</p>
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
+                {supplier?.bp_name ?? performance.bp_code}
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                {performance.bp_code} &middot; {monthNames[month - 1]} {year}
+              </p>
             </div>
-            {supplier && (
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Supplier Name</p>
-                <p className="text-xl font-semibold text-gray-900 dark:text-white">{supplier.bp_name}</p>
-              </div>
-            )}
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Ranking</p>
-              <div className="flex items-center gap-2">
-                <Award className="w-5 h-5 text-amber-500" />
-                <p className="text-xl font-semibold text-gray-900 dark:text-white"># {performance.ranking}</p>
-              </div>
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <Award className="w-4 h-4 text-amber-500" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Rank #{performance.ranking}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Score Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 p-6">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Final Score</p>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">{performance.final_score}</p>
+        {/* ── Score Overview ─────────────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          {/* Final Score */}
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] md:p-5">
+            <p className="text-xs text-gray-400 mb-1">Final Score</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{performance.final_score}</p>
           </div>
-
-          <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 p-6">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Grade</p>
-            <p className={`text-3xl font-bold px-3 py-1 rounded-lg w-fit ${getGradeColor(performance.performance_grade)}`}>
+          {/* Grade */}
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] md:p-5">
+            <p className="text-xs text-gray-400 mb-2">Grade</p>
+            <span className={`inline-block px-3 py-1 text-sm font-bold rounded-full ${getGradeColor(performance.performance_grade)}`}>
               {performance.performance_grade}
-            </p>
+            </span>
           </div>
-
-          <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 p-6">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Category</p>
-            <p className={`text-lg font-bold px-3 py-1 rounded-lg w-fit ${getCategoryColor(performance.category)}`}>
+          {/* Category */}
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] md:p-5">
+            <p className="text-xs text-gray-400 mb-2">Category</p>
+            <span className={`inline-block px-3 py-1 text-sm font-semibold rounded-full ${getCategoryColor(performance.category)}`}>
               {performance.category.charAt(0).toUpperCase() + performance.category.slice(1)}
-            </p>
+            </span>
           </div>
-
-          <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 p-6">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Total Index</p>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">{performance.total_index}</p>
+          {/* Total Index */}
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] md:p-5">
+            <p className="text-xs text-gray-400 mb-1">Total Index</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{performance.total_index}</p>
           </div>
         </div>
 
-        {/* Fulfillment Parameter */}
-        <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 p-6">
-          <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-gray-900 dark:text-white">
-            <BarChart3 className="w-5 h-5 text-blue-500" />
-            Order Fulfillment Parameter
-          </h3>
+        {/* ── Parameters ─────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="border-l-4 border-blue-500 pl-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Total DN Quantity</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{performance.total_dn_qty.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 mt-1">Total quantity ordered</p>
+          {/* Order Fulfillment */}
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90 mb-6 flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-blue-500" />
+              Order Fulfillment
+            </h3>
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800">
+              <span className="text-gray-400 text-xs">Parameter</span>
+              <span className="text-right text-gray-400 text-xs">Value</span>
             </div>
-
-            <div className="border-l-4 border-green-500 pl-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Total Receipt Quantity</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{performance.total_receipt_qty.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 mt-1">Total quantity scanned & received</p>
-            </div>
-
-            <div className="border-l-4 border-amber-500 pl-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Fulfillment Percentage</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{performance.fulfillment_percentage.toFixed(2)}%</p>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
+            {[
+              { label: "Total DN Quantity", value: performance.total_dn_qty.toLocaleString() },
+              { label: "Total Receipt Quantity", value: performance.total_receipt_qty.toLocaleString() },
+              { label: "Fulfillment (%)", value: `${performance.fulfillment_percentage.toFixed(2)}%` },
+              { label: "Fulfillment Index (Penalty)", value: performance.fulfillment_index.toString(), red: true },
+            ].map((row) => (
+              <div key={row.label} className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
+                <span className="text-sm text-gray-500 dark:text-gray-400">{row.label}</span>
+                <span className={`text-sm font-medium ${row.red ? "text-red-500 dark:text-red-400" : "text-gray-700 dark:text-gray-200"}`}>
+                  {row.value}
+                </span>
+              </div>
+            ))}
+            {/* Progress bar */}
+            <div className="mt-4">
+              <div className="flex justify-between text-xs text-gray-400 mb-1">
+                <span>Fulfillment Rate</span>
+                <span>{performance.fulfillment_percentage.toFixed(2)}%</span>
+              </div>
+              <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
                 <div
-                  className="bg-amber-500 h-2 rounded-full"
+                  className="h-full bg-blue-500 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(performance.fulfillment_percentage, 100)}%` }}
                 />
               </div>
             </div>
+          </div>
 
-            <div className="border-l-4 border-red-500 pl-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Fulfillment Index (Penalty)</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{performance.fulfillment_index}</p>
-              <p className="text-xs text-gray-500 mt-1">Points deducted from score</p>
+          {/* On-Time Delivery */}
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90 mb-6 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-green-500" />
+              On-Time Delivery
+            </h3>
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800">
+              <span className="text-gray-400 text-xs">Parameter</span>
+              <span className="text-right text-gray-400 text-xs">Value</span>
+            </div>
+            {[
+              { label: "Total Deliveries", value: performance.total_deliveries.toString() },
+              { label: "On-Time Deliveries", value: performance.on_time_deliveries.toString() },
+              { label: "On-Time (%)", value: `${onTimePct}%` },
+              { label: "Total Delay Days", value: performance.total_delay_days.toString() },
+              { label: "Delivery Index (Penalty)", value: performance.delivery_index.toString(), red: true },
+            ].map((row) => (
+              <div key={row.label} className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
+                <span className="text-sm text-gray-500 dark:text-gray-400">{row.label}</span>
+                <span className={`text-sm font-medium ${row.red ? "text-red-500 dark:text-red-400" : "text-gray-700 dark:text-gray-200"}`}>
+                  {row.value}
+                </span>
+              </div>
+            ))}
+            {/* Progress bar */}
+            <div className="mt-4">
+              <div className="flex justify-between text-xs text-gray-400 mb-1">
+                <span>On-Time Rate</span>
+                <span>{onTimePct}%</span>
+              </div>
+              <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
+                <div
+                  className="h-full bg-green-500 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(Number(onTimePct), 100)}%` }}
+                />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* On-Time Delivery Parameter */}
-        <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 p-6">
-          <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-gray-900 dark:text-white">
-            <TrendingUp className="w-5 h-5 text-green-500" />
-            On-Time Delivery Parameter
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="border-l-4 border-blue-500 pl-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Total Deliveries</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{performance.total_deliveries}</p>
-              <p className="text-xs text-gray-500 mt-1">Regular arrivals in period</p>
+        {/* ── Score Calculation Summary ───────────────────────────── */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90 mb-6">Score Calculation Summary</h3>
+          <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800">
+            <span className="text-gray-400 text-xs">Component</span>
+            <span className="text-right text-gray-400 text-xs">Points</span>
+          </div>
+          {[
+            { label: "Base Score", value: "100", red: false },
+            { label: "Fulfillment Index (Penalty)", value: `− ${performance.fulfillment_index}`, red: true },
+            { label: "Delivery Index (Penalty)", value: `− ${performance.delivery_index}`, red: true },
+          ].map((row) => (
+            <div key={row.label} className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
+              <span className="text-sm text-gray-500 dark:text-gray-400">{row.label}</span>
+              <span className={`text-sm font-semibold ${row.red ? "text-red-500 dark:text-red-400" : "text-gray-700 dark:text-gray-200"}`}>
+                {row.value}
+              </span>
             </div>
-
-            <div className="border-l-4 border-green-500 pl-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">On-Time Deliveries</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{performance.on_time_deliveries}</p>
-              <p className="text-xs text-gray-500 mt-1">Arrivals with on_commitment status</p>
-            </div>
-
-            <div className="border-l-4 border-amber-500 pl-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">On-Time Percentage</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {performance.total_deliveries > 0
-                  ? ((performance.on_time_deliveries / performance.total_deliveries) * 100).toFixed(2)
-                  : "0"}
-                %
-              </p>
-            </div>
-
-            <div className="border-l-4 border-red-500 pl-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Total Delay Days</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{performance.total_delay_days}</p>
-              <p className="text-xs text-gray-500 mt-1">Days delayed across all deliveries</p>
-            </div>
-
-            <div className="border-l-4 border-purple-500 pl-4 md:col-span-2">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Delivery Index (Penalty)</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{performance.delivery_index}</p>
-              <p className="text-xs text-gray-500 mt-1">Points deducted from score</p>
-            </div>
+          ))}
+          <div className="flex items-center justify-between pt-4">
+            <span className="text-base font-semibold text-gray-800 dark:text-white/90">Final Score</span>
+            <span className="text-2xl font-bold text-gray-900 dark:text-white">{performance.final_score}</span>
           </div>
         </div>
 
-        {/* Score Calculation Summary */}
-        <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 p-6">
-          <h3 className="text-lg font-semibold mb-6 text-gray-900 dark:text-white">Score Calculation Summary</h3>
+        {/* Calculated at */}
+        {performance.calculated_at && (
+          <p className="text-xs text-gray-400 dark:text-gray-500 text-right">
+            Calculated at: {new Date(performance.calculated_at).toLocaleString()}
+          </p>
+        )}
 
-          <div className="space-y-4">
-            <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <span className="text-gray-700 dark:text-gray-300">Base Score</span>
-              <span className="text-xl font-bold text-gray-900 dark:text-white">100</span>
-            </div>
-
-            <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <span className="text-gray-700 dark:text-gray-300">Fulfillment Index (Penalty)</span>
-              <span className="text-xl font-bold text-red-600">- {performance.fulfillment_index}</span>
-            </div>
-
-            <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <span className="text-gray-700 dark:text-gray-300">Delivery Index (Penalty)</span>
-              <span className="text-xl font-bold text-red-600">- {performance.delivery_index}</span>
-            </div>
-
-            <div className="border-t-2 border-gray-300 dark:border-gray-600 pt-4 flex justify-between items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <span className="text-lg font-semibold text-gray-800 dark:text-white">Final Score</span>
-              <span className="text-3xl font-bold text-blue-600 dark:text-blue-400">{performance.final_score}</span>
-            </div>
-          </div>
-        </div>
       </div>
     </>
   );

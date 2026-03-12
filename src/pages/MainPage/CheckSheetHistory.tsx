@@ -104,6 +104,18 @@ export default function CheckSheetHistory() {
     [selectedItems, getRowKey]
   );
 
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allKeys = new Set(data.map((item) => getRowKey(item)));
+      setSelectedItems(allKeys);
+    } else {
+      setSelectedItems(new Set());
+    }
+  };
+
+  const isAllSelected = data.length > 0 && data.every((item) => selectedItems.has(getRowKey(item)));
+  const isIndeterminate = !isAllSelected && data.some((item) => selectedItems.has(getRowKey(item)));
+
   // Download CSV handler (kept for future use if needed)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
   const handleDownloadCsv = () => {
@@ -224,7 +236,17 @@ export default function CheckSheetHistory() {
   const columns: ColumnConfig[] = useMemo(() => [
     {
       key: "dn_number",
-      label: "DN Number",
+      label: (
+        <div className="flex items-center gap-2">
+          <Checkbox
+            checked={isAllSelected}
+            onChange={(checked) => handleSelectAll(checked)}
+            // @ts-ignore — indeterminate is a valid DOM prop
+            indeterminate={isIndeterminate}
+          />
+          <span>DN Number</span>
+        </div>
+      ),
       rowSpan: 2,
       render: (value: string, row: CheckSheetHistoryData) => (
         <div className="flex gap-3">
@@ -323,7 +345,7 @@ export default function CheckSheetHistory() {
       label: "Receiving PIC",
       rowSpan: 2,
     },
-  ], [isItemSelected, handleSelectItem]);
+  ], [isItemSelected, handleSelectItem, isAllSelected, isIndeterminate, handleSelectAll]);
 
   return (
     <div className="overflow-x-hidden space-y-5 sm:space-y-6">
