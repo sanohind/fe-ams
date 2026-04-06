@@ -18,7 +18,7 @@ const oidcConfig = {
   loadUserInfo: true,
   // Important: Use query response mode for hash routing
   // This tells oidc-client-ts to read response from query string, not hash
-  response_mode: 'query',
+  response_mode: 'query' as const,
 };
 
 export const userManager = new UserManager(oidcConfig);
