@@ -369,94 +369,104 @@ export const SkeletonDeliveryPerformance: React.FC = () => {
   );
 };
 
+// Re-usable inline skeleton row for table-like sections
+const SkeletonTableRow: React.FC<{ cols: number; prefix: string }> = ({ cols, prefix }) => (
+  <div className="flex gap-3 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
+    {Array.from({ length: cols }).map((_, i) => (
+      <Skeleton key={`${prefix}-${i}`} height={16} className="flex-1" />
+    ))}
+  </div>
+);
+
 export const SkeletonArrivalSchedule: React.FC = () => {
   return (
     <div className="space-y-5 sm:space-y-6">
-      {/* Date Picker Section */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <Skeleton height={16} width={100} />
-          <Skeleton height={40} width={250} />
+      {/* Filter card */}
+      <div className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 rounded-xl p-5 space-y-4">
+        {/* Row 1: mode toggle buttons */}
+        <div className="flex items-center gap-3">
+          <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <Skeleton height={36} width={110} className="rounded-none" />
+            <Skeleton height={36} width={110} className="rounded-none border-l border-gray-200 dark:border-gray-700" />
+          </div>
         </div>
-        <Skeleton height={40} width={160} />
+
+        {/* Divider */}
+        <div className="border-t border-gray-100 dark:border-gray-800" />
+
+        {/* Row 2: date inputs + apply button */}
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Skeleton height={12} width={60} />
+            <Skeleton height={40} width={220} />
+          </div>
+          <Skeleton height={40} width={100} />
+        </div>
       </div>
 
       {/* Regular Arrival Table */}
-      <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 overflow-hidden">
-        <div className="p-6">
-          {/* Title and Search */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <Skeleton height={24} width={150} />
-            <Skeleton height={40} width={300} />
+      <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
+        <div className="p-4 md:p-6">
+          {/* Header row */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+            <Skeleton height={22} width={160} />
+            <Skeleton height={40} width={280} />
           </div>
 
-          {/* Table */}
-          <div className="space-y-4">
-            {/* Header - 22 columns for all fields */}
-            <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(22, minmax(80px, 1fr))' }}>
-              {Array.from({ length: 22 }).map((_, i) => (
-                <Skeleton key={`header-${i}`} height={40} />
-              ))}
-            </div>
+          {/* Column headers */}
+          <div className="flex gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+            {[60, 140, 100, 100, 90, 90, 80, 80, 100].map((w, i) => (
+              <Skeleton key={i} height={14} width={w} />
+            ))}
+          </div>
 
-            {/* Rows */}
-            {Array.from({ length: 5 }).map((_, rowIdx) => (
-              <div
-                key={`row-${rowIdx}`}
-                className="grid gap-2"
-                style={{ gridTemplateColumns: 'repeat(22, minmax(80px, 1fr))' }}
-              >
-                {Array.from({ length: 22 }).map((_, colIdx) => (
-                  <Skeleton key={`cell-${rowIdx}-${colIdx}`} height={48} />
-                ))}
-              </div>
+          {/* Rows */}
+          <div>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonTableRow key={i} cols={9} prefix={`reg-${i}`} />
             ))}
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between mt-6">
-            <Skeleton height={32} width={200} />
-            <Skeleton height={32} width={150} />
+          <div className="flex items-center justify-between mt-5">
+            <Skeleton height={28} width={180} />
+            <div className="flex gap-1">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} height={28} width={32} />
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Additional Arrival Table */}
-      <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 overflow-hidden">
-        <div className="p-6">
-          {/* Title and Search */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <Skeleton height={24} width={180} />
-            <Skeleton height={40} width={300} />
+      <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
+        <div className="p-4 md:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+            <Skeleton height={22} width={200} />
+            <Skeleton height={40} width={280} />
           </div>
 
-          {/* Table */}
-          <div className="space-y-4">
-            {/* Header */}
-            <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(22, minmax(80px, 1fr))' }}>
-              {Array.from({ length: 22 }).map((_, i) => (
-                <Skeleton key={`header2-${i}`} height={40} />
-              ))}
-            </div>
-
-            {/* Rows */}
-            {Array.from({ length: 3 }).map((_, rowIdx) => (
-              <div
-                key={`row2-${rowIdx}`}
-                className="grid gap-2"
-                style={{ gridTemplateColumns: 'repeat(22, minmax(80px, 1fr))' }}
-              >
-                {Array.from({ length: 22 }).map((_, colIdx) => (
-                  <Skeleton key={`cell2-${rowIdx}-${colIdx}`} height={48} />
-                ))}
-              </div>
+          {/* Column headers */}
+          <div className="flex gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+            {[60, 140, 100, 100, 90, 90, 80, 80, 100].map((w, i) => (
+              <Skeleton key={i} height={14} width={w} />
             ))}
           </div>
 
-          {/* Pagination */}
-          <div className="flex items-center justify-between mt-6">
-            <Skeleton height={32} width={200} />
-            <Skeleton height={32} width={150} />
+          <div>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <SkeletonTableRow key={i} cols={9} prefix={`add-${i}`} />
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between mt-5">
+            <Skeleton height={28} width={180} />
+            <div className="flex gap-1">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} height={28} width={32} />
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -464,62 +474,139 @@ export const SkeletonArrivalSchedule: React.FC = () => {
       {/* Calendar Section */}
       <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
         <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-800">
-          <Skeleton height={24} width={250} className="mb-2" />
-          <Skeleton height={16} width={500} />
+          <Skeleton height={22} width={240} className="mb-2" />
+          <Skeleton height={14} width={320} />
         </div>
 
         <div className="p-4 sm:p-6">
-          {/* Calendar Header */}
-          <div className="flex justify-between items-center mb-4">
+          {/* Calendar toolbar */}
+          <div className="flex justify-between items-center mb-5">
             <div className="flex gap-2">
-              <Skeleton height={36} width={80} />
-              <Skeleton height={36} width={80} />
-              <Skeleton height={36} width={80} />
+              <Skeleton height={32} width={70} />
+              <Skeleton height={32} width={70} />
+              <Skeleton height={32} width={70} />
             </div>
-            <Skeleton height={32} width={200} />
+            <Skeleton height={28} width={180} />
             <div className="flex gap-2">
-              <Skeleton height={36} width={100} />
-              <Skeleton height={36} width={100} />
-              <Skeleton height={36} width={100} />
+              <Skeleton height={32} width={32} />
+              <Skeleton height={32} width={32} />
             </div>
           </div>
 
-          {/* Calendar Grid */}
-          <div className="space-y-2">
-            {/* Day headers */}
-            <div className="grid grid-cols-7 gap-2">
-              {Array.from({ length: 7 }).map((_, i) => (
-                <Skeleton key={`day-${i}`} height={40} />
-              ))}
-            </div>
-
-            {/* Calendar weeks */}
-            {Array.from({ length: 5 }).map((_, weekIdx) => (
-              <div key={`week-${weekIdx}`} className="grid grid-cols-7 gap-2">
-                {Array.from({ length: 7 }).map((_, dayIdx) => (
-                  <div key={`day-${weekIdx}-${dayIdx}`} className="space-y-1">
-                    <Skeleton height={80} />
-                    {/* Some days have events */}
-                    {(weekIdx + dayIdx) % 3 === 0 && (
-                      <Skeleton height={24} width="90%" className="ml-1" />
-                    )}
-                  </div>
-                ))}
-              </div>
+          {/* Day-of-week header */}
+          <div className="grid grid-cols-7 gap-1.5 mb-1.5">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <Skeleton key={i} height={32} />
             ))}
           </div>
 
-          {/* Legend */}
-          <div className="mt-6 flex flex-wrap items-center gap-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-            <div className="flex items-center gap-2">
-              <Skeleton height={16} width={16} className="rounded" />
-              <Skeleton height={16} width={120} />
+          {/* Calendar cells — 5 weeks */}
+          {Array.from({ length: 5 }).map((_, w) => (
+            <div key={w} className="grid grid-cols-7 gap-1.5 mb-1.5">
+              {Array.from({ length: 7 }).map((_, d) => (
+                <div key={d} className="space-y-1">
+                  <Skeleton height={72} />
+                  {(w + d) % 4 === 0 && <Skeleton height={18} width="85%" className="mx-auto" />}
+                </div>
+              ))}
             </div>
-            <div className="flex items-center gap-2">
-              <Skeleton height={16} width={16} className="rounded" />
-              <Skeleton height={16} width={140} />
+          ))}
+
+          {/* Legend */}
+          <div className="mt-5 flex flex-wrap items-center gap-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+            {[100, 130].map((w, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Skeleton height={14} width={14} />
+                <Skeleton height={14} width={w} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const SkeletonDeliveryPerformanceDetail: React.FC = () => {
+  return (
+    <div className="space-y-6">
+      {/* Supplier info card */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="space-y-2">
+            <Skeleton height={22} width={240} />
+            <Skeleton height={14} width={160} />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton height={16} width={16} />
+            <Skeleton height={16} width={100} />
+          </div>
+        </div>
+      </div>
+
+      {/* Score overview — 4 mini cards */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] md:p-5">
+            <Skeleton height={12} width={80} className="mb-2" />
+            {i <= 1 ? (
+              <Skeleton height={28} width={60} />
+            ) : (
+              <Skeleton height={26} width={70} className="rounded-full" />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Two parameter cards side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {["Order Fulfillment", "On-Time Delivery"].map((_, ci) => (
+          <div key={ci} className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
+            {/* Section title */}
+            <div className="flex items-center gap-2 mb-5">
+              <Skeleton height={20} width={20} />
+              <Skeleton height={18} width={180} />
+            </div>
+            {/* Column headers */}
+            <div className="flex justify-between pb-3 border-b border-gray-100 dark:border-gray-800 mb-1">
+              <Skeleton height={12} width={80} />
+              <Skeleton height={12} width={50} />
+            </div>
+            {/* Rows */}
+            {Array.from({ length: ci === 0 ? 4 : 5 }).map((_, i) => (
+              <div key={i} className="flex justify-between items-center py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
+                <Skeleton height={14} width={140} />
+                <Skeleton height={14} width={60} />
+              </div>
+            ))}
+            {/* Progress bar */}
+            <div className="mt-4">
+              <div className="flex justify-between mb-1">
+                <Skeleton height={12} width={100} />
+                <Skeleton height={12} width={40} />
+              </div>
+              <Skeleton height={8} width="100%" className="rounded-full" />
             </div>
           </div>
+        ))}
+      </div>
+
+      {/* Score calculation summary */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
+        <Skeleton height={20} width={220} className="mb-5" />
+        <div className="flex justify-between pb-3 border-b border-gray-100 dark:border-gray-800 mb-1">
+          <Skeleton height={12} width={80} />
+          <Skeleton height={12} width={50} />
+        </div>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="flex justify-between items-center py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
+            <Skeleton height={14} width={180} />
+            <Skeleton height={14} width={50} />
+          </div>
+        ))}
+        <div className="flex justify-between items-center pt-4">
+          <Skeleton height={18} width={100} />
+          <Skeleton height={28} width={50} />
         </div>
       </div>
     </div>

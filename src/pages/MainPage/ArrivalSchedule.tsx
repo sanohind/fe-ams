@@ -27,6 +27,7 @@ interface DNItem {
 interface DashboardDataItem {
   no: number;
   supplier: string;
+  scheduleDate?: string;  // Only populated in date range mode
   schedule: string; // Kept for backwards compatibility
   arrivalPlan: string;
   departurePlan: string;
@@ -156,8 +157,6 @@ export default function ArrivalSchedule() {
   const [regularData, setRegularData] = useState<DashboardDataItem[]>([]);
   const [additionalData, setAdditionalData] = useState<DashboardDataItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const calendarRef = useRef<FullCalendar>(null);
@@ -167,103 +166,186 @@ export default function ArrivalSchedule() {
   const [recalculating, setRecalculating] = useState(false);
   const toast = useToast();
 
-  // Check if selected date is not today
-  const isNotToday = () => {
-    const today = new Date().toISOString().split('T')[0];
-    return selectedDate !== today;
-  };
+  // ── Filter state ──────────────────────────────────────────────────────────
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-  // Download daily report
-  const handleDownloadReport = async () => {
-    try {
-      setDownloadingReport(true);
-      const response = await apiService.downloadDailyReport(selectedDate);
+  const [filterMode, setFilterMode] = useState<'single' | 'range'>('single');
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr);   // single date OR date_from
+  const [dateTo, setDateTo] = useState<string>(todayStr);               // only used in range mode
+  const [filterApplied, setFilterApplied] = useState(false);            // whether Apply has been clicked
 
-      if (!response.ok) {
-        throw new Error('Failed to download report');
-      }
+  // Supplier dropdown
+  interface Supplier { bp_code: string; bp_name: string; }
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [supplierSearch, setSupplierSearch] = useState('');
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `daily-report-${selectedDate}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (err: any) {
-      console.error('Error downloading report:', err);
-      alert('Failed to download daily report. Please try again.');
-    } finally {
-      setDownloadingReport(false);
+  const filteredSuppliers = suppliers.filter(s =>
+    s.bp_name.toLowerCase().includes(supplierSearch.toLowerCase()) ||
+    s.bp_code.toLowerCase().includes(supplierSearch.toLowerCase())
+  );
+
+  // ── Computed download eligibility ────────────────────────────────────────
+  /**
+   * Returns:
+   *  'ok'      → can download
+   *  'today'   → range includes today (or is today in single mode with custom — existing file check is server-side)
+   *  'future'  → range is in the future
+   */
+  const downloadStatus = (): 'ok' | 'today_range' | 'not_applied' => {
+    if (!filterApplied) return 'not_applied';
+    if (filterMode === 'range') {
+      // Range: hide if range includes today or future
+      if (dateTo >= todayStr) return 'today_range';
+    } else {
+      // Single date: hide if date is today or future
+      if (selectedDate >= todayStr) return 'today_range';
     }
+    return 'ok';
   };
 
-  // Re-calculate arrival status
-  const handleRecalculateStatus = async () => {
-    try {
-      setRecalculating(true);
-      const response = await apiService.recalculateArrivalStatus(selectedDate);
-
-      if (response.success) {
-        toast.success('Arrival status recalculated successfully', {
-          title: 'Recalculation Complete',
-        });
-        // Refresh data after recalculation
-        const fetchResponse = await apiService.getScheduleData(selectedDate);
-        if (fetchResponse.success && fetchResponse.data) {
-          const fetchData = fetchResponse.data as any;
-          const regular = transformApiDataToDashboard(fetchData.regular_arrivals || []);
-          const additional = transformApiDataToDashboard(fetchData.additional_arrivals || []);
-          setRegularData(regular);
-          setAdditionalData(additional);
-        }
-      } else {
-        throw new Error(response.message || 'Failed to re-calculate status');
-      }
-    } catch (err: any) {
-      console.error('Error re-calculating status:', err);
-      toast.error(err.message || 'Failed to re-calculate arrival status. Please try again.', {
-        title: 'Recalculation Failed',
-      });
-    } finally {
-      setRecalculating(false);
-    }
-  };
-
-  // Fetch dashboard data from API
+  // ── Load supplier list once ──────────────────────────────────────────────
   useEffect(() => {
-    const fetchScheduleData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    apiService.getDailyReportSuppliers().then((res: any) => {
+      if (res?.success && Array.isArray(res.data)) setSuppliers(res.data);
+    }).catch(() => {/* silently ignore */ });
+  }, []);
 
-        // Fetch schedule data for selected date
-        const response = await apiService.getScheduleData(selectedDate);
+  // ── Apply Filter → fetch schedule data ───────────────────────────────────
+  const applyFilter = async () => {
+    try {
+      setLoading(true);
+      setFilterApplied(true);
 
-        if (response.success && response.data) {
-          // Transform API data to match our interface
+      const bpCode = selectedSupplier?.bp_code;
+
+      if (filterMode === 'single') {
+        // Use /arrival-schedule endpoint (same format as dashboard, supports bp_code)
+        const response: any = await apiService.getArrivalScheduleByDate({ date: selectedDate, bp_code: bpCode });
+        if (response?.success && response.data) {
+          const data = response.data as any;
+          setRegularData(transformApiDataToDashboard(data.regular_arrivals || []));
+          setAdditionalData(transformApiDataToDashboard(data.additional_arrivals || []));
+        } else {
+          const detail = response?.errors ? Object.values(response.errors).flat().join(' ') : null;
+          toast.error(detail || response?.message || 'Gagal memuat data jadwal', { title: 'Error loading schedule data' });
+        }
+
+      } else {
+        // Use new range API
+        const response: any = await apiService.getArrivalScheduleRange({
+          date_from: selectedDate,
+          date_to: dateTo,
+          bp_code: bpCode,
+        });
+        if (response?.success && response.data) {
           const data = response.data as any;
           const regular = transformApiDataToDashboard(data.regular_arrivals || []);
           const additional = transformApiDataToDashboard(data.additional_arrivals || []);
           setRegularData(regular);
           setAdditionalData(additional);
         } else {
-          setError(response.message || 'Failed to fetch schedule data');
+          const detail = response?.errors ? Object.values(response.errors).flat().join(' ') : null;
+          toast.error(detail || response?.message || 'Gagal memuat data jadwal', { title: 'Error loading schedule data' });
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to fetch schedule data', { title: 'Error loading schedule data' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial load: fetch data for today but do NOT set filterApplied
+  // so that action buttons (Download/Recalculate) don't appear until the user explicitly applies a filter
+  useEffect(() => {
+    const fetchInitial = async () => {
+      try {
+        setLoading(true);
+        const response: any = await apiService.getArrivalScheduleByDate({ date: todayStr });
+        if (response?.success && response.data) {
+          const data = response.data as any;
+          setRegularData(transformApiDataToDashboard(data.regular_arrivals || []));
+          setAdditionalData(transformApiDataToDashboard(data.additional_arrivals || []));
+        } else {
+          const detail = response?.errors ? Object.values(response.errors).flat().join(' ') : null;
+          toast.error(detail || response?.message || 'Gagal memuat data jadwal hari ini', { title: 'Error loading schedule data' });
         }
       } catch (err: any) {
-        console.error('Error fetching schedule data:', err);
-        setError(err.message || 'Failed to fetch schedule data');
+        toast.error(err.message || 'Gagal memuat data jadwal hari ini', { title: 'Error loading schedule data' });
       } finally {
         setLoading(false);
       }
     };
+    fetchInitial();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    fetchScheduleData();
-  }, [selectedDate]);
+  const handleRecalculateStatus = async () => {
+    try {
+      setRecalculating(true);
+      const response = await apiService.recalculateArrivalStatus(selectedDate);
+      if (response.success) {
+        toast.success('Arrival status recalculated successfully', { title: 'Recalculation Complete' });
+        await applyFilter();
+      } else {
+        throw new Error(response.message || 'Failed to re-calculate status');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to re-calculate arrival status.', { title: 'Recalculation Failed' });
+    } finally {
+      setRecalculating(false);
+    }
+  };
 
-  // Fetch calendar schedule data
+  // Download handler — decides single daily report vs. custom PDF
+  const handleDownloadReport = async () => {
+    const ds = downloadStatus();
+    if (ds === 'today_range') {
+      toast.warning('Tidak dapat mengunduh laporan yang mencakup hari ini karena data belum lengkap. Pilih rentang tanggal sebelum hari ini.', { title: 'Data Belum Lengkap' });
+      return;
+    }
+    if (ds === 'not_applied') {
+      toast.warning('Tekan Apply Filter terlebih dahulu.', { title: 'Filter Belum Diterapkan' });
+      return;
+    }
+
+    try {
+      setDownloadingReport(true);
+
+      const isSimpleSingleDate = filterMode === 'single' && !selectedSupplier;
+
+      if (isSimpleSingleDate) {
+        // Download pre-generated daily report
+        const response = await apiService.downloadDailyReport(selectedDate);
+        if (!response.ok) throw new Error('Failed to download report');
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `daily-report-${selectedDate}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } else {
+        // Generate custom PDF
+        await apiService.downloadCustomDailyReport({
+          date_from: selectedDate,
+          date_to: filterMode === 'range' ? dateTo : selectedDate,
+          bp_code: selectedSupplier?.bp_code,
+        });
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengunduh laporan.', { title: 'Download Gagal' });
+    } finally {
+      setDownloadingReport(false);
+    }
+  };
+
+
   useEffect(() => {
     const fetchCalendarData = async () => {
       try {
@@ -463,6 +545,7 @@ export default function ArrivalSchedule() {
       return {
         no: index + 1,
         supplier: item.supplier_name || item.bp_code || '-',
+        scheduleDate: item.schedule_date || undefined,
         schedule: item.arrival_plan || scheduleTime, // Use arrival_plan, fallback to schedule for backwards compatibility
         arrivalPlan: item.arrival_plan || scheduleTime,
         departurePlan: item.departure_plan || '-',
@@ -541,7 +624,19 @@ export default function ArrivalSchedule() {
     );
   };
 
-  // Konfigurasi kolom
+  // Konfigurasi kolom — kolom Date hanya muncul saat mode Date Range
+  const dateColumn: ColumnConfig = {
+    key: "scheduleDate",
+    label: "Date",
+    sortable: true,
+    rowSpan: 2,
+    render: (value) => (
+      <span className="font-mono text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+        {value ? String(value) : '-'}
+      </span>
+    ),
+  };
+
   const columns: ColumnConfig[] = [
     {
       key: "no",
@@ -549,6 +644,7 @@ export default function ArrivalSchedule() {
       sortable: true,
       rowSpan: 2,
     },
+    ...(filterMode === 'range' ? [dateColumn] : []),
     {
       key: "supplier",
       label: "Supplier",
@@ -808,108 +904,246 @@ export default function ArrivalSchedule() {
       />
       <PageBreadcrumb pageTitle="Arrival Schedule" />
 
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <div className="flex">
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
-                Error loading schedule data
-              </h3>
-              <div className="mt-2 text-sm text-red-700 dark:text-red-300">
-                {error}
-              </div>
+      {/* ── Filter Card ── */}
+      <div className="bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 rounded-xl p-5 space-y-4 mb-3">
+
+        {/* Row 1: Mode Toggle */}
+        <div className="flex items-center gap-3">
+          <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-sm">
+            <button
+              className={`px-5 py-2 font-medium transition-colors ${filterMode === 'single' ? 'bg-brand-500 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+              onClick={() => { setFilterMode('single'); setFilterApplied(false); }}
+            >
+              Single Date
+            </button>
+            <button
+              className={`px-5 py-2 font-medium transition-colors border-l border-gray-200 dark:border-gray-700 ${filterMode === 'range' ? 'bg-brand-500 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+              onClick={() => { setFilterMode('range'); setFilterApplied(false); }}
+            >
+              Date Range
+            </button>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-gray-100 dark:border-gray-800" />
+
+        {/* Row 2: Filter Inputs + Apply */}
+        <div className="flex flex-wrap items-end gap-4">
+
+          {/* Date From / Single Date */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+              {filterMode === 'single' ? 'Date' : 'Date From'}
+            </label>
+            <div className="w-[220px]">
+              <DatePicker
+                id="arrival-schedule-date-from"
+                mode="single"
+                placeholder="Select date"
+                defaultDate={selectedDate}
+                isStatic={false}
+                position="auto left"
+                onChange={(selectedDates, dateStr) => {
+                  if (selectedDates && selectedDates.length > 0) {
+                    const d = selectedDates[0];
+                    const formatted = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                    setSelectedDate(formatted);
+                  } else if (dateStr) {
+                    setSelectedDate(dateStr);
+                  }
+                  setFilterApplied(false);
+                }}
+              />
             </div>
+          </div>
+
+          {/* Date To (range mode only) */}
+          {filterMode === 'range' && (
+            <>
+              <div className="flex items-center pb-[10px]">
+                <span className="text-sm text-gray-400 dark:text-gray-500 font-medium">—</span>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Date To</label>
+                <div className="w-[220px]">
+                  <DatePicker
+                    id="arrival-schedule-date-to"
+                    mode="single"
+                    placeholder="Select end date"
+                    defaultDate={dateTo}
+                    isStatic={false}
+                    position="auto left"
+                    onChange={(selectedDates, dateStr) => {
+                      if (selectedDates && selectedDates.length > 0) {
+                        const d = selectedDates[0];
+                        const formatted = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                        setDateTo(formatted);
+                      } else if (dateStr) {
+                        setDateTo(dateStr);
+                      }
+                      setFilterApplied(false);
+                    }}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Separator */}
+          <div className="w-px h-10 bg-gray-200 dark:bg-gray-700 self-end mb-0.5 hidden sm:block" />
+
+          {/* Supplier Combobox */}
+          <div className="flex flex-col gap-1.5 flex-1 min-w-[200px]">
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Supplier (optional)</label>
+            <div className="relative w-full">
+              <input
+                type="text"
+                placeholder="Search supplier..."
+                className="w-full h-[42px] pl-3.5 pr-9 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-colors"
+                value={selectedSupplier ? `${selectedSupplier.bp_code} - ${selectedSupplier.bp_name}` : supplierSearch}
+                onChange={e => {
+                  setSelectedSupplier(null);
+                  setSupplierSearch(e.target.value);
+                  setShowSupplierDropdown(true);
+                  setFilterApplied(false);
+                }}
+                onFocus={() => setShowSupplierDropdown(true)}
+                onBlur={() => setTimeout(() => setShowSupplierDropdown(false), 150)}
+              />
+              {selectedSupplier ? (
+                <button
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-base leading-none"
+                  onMouseDown={e => { e.preventDefault(); setSelectedSupplier(null); setSupplierSearch(''); setFilterApplied(false); }}
+                >
+                  <svg className="w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              ) : (
+                <span className="absolute text-gray-400 pointer-events-none right-3.5 top-1/2 -translate-y-1/2">
+                  <svg
+                    className="fill-current"
+                    width="18"
+                    height="18"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      clipRule="evenodd"
+                      d="M3.04199 9.37363C3.04199 5.87693 5.87735 3.04199 9.37533 3.04199C12.8733 3.04199 15.7087 5.87693 15.7087 9.37363C15.7087 12.8703 12.8733 15.7053 9.37533 15.7053C5.87735 15.7053 3.04199 12.8703 3.04199 9.37363ZM9.37533 1.54199C5.04926 1.54199 1.54199 5.04817 1.54199 9.37363C1.54199 13.6991 5.04926 17.2053 9.37533 17.2053C11.2676 17.2053 13.0032 16.5344 14.3572 15.4176L17.1773 18.238C17.4702 18.5309 17.945 18.5309 18.2379 18.238C18.5308 17.9451 18.5309 17.4703 18.238 17.1773L15.4182 14.3573C16.5367 13.0033 17.2087 11.2669 17.2087 9.37363C17.2087 5.04817 13.7014 1.54199 9.37533 1.54199Z"
+                      fill=""
+                    />
+                  </svg>
+                </span>
+              )}
+              {showSupplierDropdown && !selectedSupplier && filteredSuppliers.length > 0 && (
+                <div className="absolute z-50 top-full mt-1 left-0 w-full max-h-52 overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl">
+                  {filteredSuppliers.slice(0, 50).map(s => (
+                    <button
+                      key={s.bp_code}
+                      className="w-full text-left px-3 py-2.5 text-sm hover:bg-brand-50 dark:hover:bg-brand-900/20 text-gray-700 dark:text-gray-200 border-b border-gray-50 dark:border-gray-800 last:border-0"
+                      onMouseDown={e => { e.preventDefault(); setSelectedSupplier(s); setSupplierSearch(''); setShowSupplierDropdown(false); setFilterApplied(false); }}
+                    >
+                      <span className="font-semibold text-brand-600 dark:text-brand-400">{s.bp_code}</span>
+                      <span className="ml-2 text-gray-500 dark:text-gray-400 truncate">{s.bp_name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Apply Button */}
+          <div className="flex flex-col gap-1.5 shrink-0">
+            <label className="text-xs opacity-0 select-none">apply</label>
+            <Button variant="primary" size="sm" onClick={applyFilter} disabled={loading} className="h-[42px] px-6">
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Loading...
+                </span>
+              ) : 'Apply Filter'}
+            </Button>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ── Action Bar (below filter card) ── */}
+      {filterApplied && (
+        <div className="flex items-center justify-between gap-3 mb-4 px-1">
+          {/* Download status / warning */}
+          <div className="flex items-center gap-3">
+            {filterMode === 'single' && selectedDate < todayStr && (
+              <Button variant="primary" size="sm" onClick={handleRecalculateStatus} disabled={recalculating}>
+                {recalculating ? (
+                  <span className="flex items-center gap-1.5">
+                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Re-calculating...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M4 12C4 7.58172 7.58172 4 12 4C14.5264 4 16.7792 5.17108 18.2454 7H16C15.4477 7 15 7.44772 15 8C15 8.55228 15.4477 9 16 9H20.5C21.0523 9 21.5 8.55228 21.5 8V3.5C21.5 2.94772 21.0523 2.5 20.5 2.5C19.9477 2.5 19.5 2.94772 19.5 3.5V5.26756C17.6318 3.25107 14.9602 2 12 2C6.47715 2 2 6.47715 2 12C2 12.5523 2.44772 13 3 13C3.55228 13 4 12.5523 4 12Z" />
+                      <path d="M20 12C20 16.4183 16.4183 20 12 20C9.47362 20 7.22075 18.8289 5.75463 17H8C8.55228 17 9 16.5523 9 16C9 15.4477 8.55228 15 8 15H3.5C2.94772 15 2.5 15.4477 2.5 16V20.5C2.5 21.0523 2.94772 21.5 3.5 21.5C4.05228 21.5 4.5 21.0523 4.5 20.5V18.7324C6.36824 20.7489 9.03976 22 12 22C17.5228 22 22 17.5228 22 12C22 11.4477 21.5523 11 21 11C20.4477 11 20 11.4477 20 12Z" />
+                    </svg>
+                    Re-calculate Status
+                  </span>
+                )}
+              </Button>
+            )}
+
+            {downloadStatus() === 'today_range' && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg text-sm text-amber-800 dark:text-amber-300">
+                <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <span>Download tidak tersedia — rentang mencakup hari ini, data belum lengkap</span>
+              </div>
+            )}
+          </div>
+
+          {/* Action buttons — right side */}
+          <div className="flex items-center gap-2 ml-auto">
+            {downloadStatus() === 'ok' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadReport}
+                disabled={downloadingReport}
+              >
+                {downloadingReport ? (
+                  <span className="flex items-center gap-1.5">
+                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Downloading...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5">
+                    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" clipRule="evenodd" d="M10.0018 14.083C9.7866 14.083 9.59255 13.9924 9.45578 13.8472L5.61586 10.0097C5.32288 9.71688 5.32272 9.242 5.61552 8.94902C5.90832 8.65603 6.3832 8.65588 6.67618 8.94868L9.25182 11.5227L9.25182 3.33301C9.25182 2.91879 9.5876 2.58301 10.0018 2.58301C10.416 2.58301 10.7518 2.91879 10.7518 3.33301L10.7518 11.5193L13.3242 8.94866C13.6172 8.65587 14.0921 8.65604 14.3849 8.94903C14.6777 9.24203 14.6775 9.7169 14.3845 10.0097L10.5761 13.8154C10.4385 13.979 10.2323 14.083 10.0018 14.083ZM4.0835 13.333C4.0835 12.9188 3.74771 12.583 3.3335 12.583C2.91928 12.583 2.5835 12.9188 2.5835 13.333V15.1663C2.5835 16.409 3.59086 17.4163 4.8335 17.4163H15.1676C16.4102 17.4163 17.4176 16.409 17.4176 15.1663V13.333C17.4176 12.9188 17.0818 12.583 16.6676 12.583C16.2533 12.583 15.9176 12.9188 15.9176 13.333V15.1663C15.9176 15.5806 15.5818 15.9163 15.1676 15.9163H4.0835C4.41928 15.9163 4.0835 15.5806 4.0835 15.1663V13.333Z" />
+                    </svg>
+                    Download Report
+                  </span>
+                )}
+              </Button>
+            )}
+
           </div>
         </div>
       )}
 
-      {/* Date Picker and Download Button */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
-        <div className="flex items-center gap-4">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Select Date:
-          </label>
-          <div className="w-full sm:w-[250px]">
-            <DatePicker
-              id="arrival-schedule-date-picker"
-              mode="single"
-              placeholder="Select date"
-              defaultDate={selectedDate}
-              onChange={(selectedDates, dateStr) => {
-                // flatpickr onChange hook signature: (selectedDates, dateStr, instance)
-                if (selectedDates && selectedDates.length > 0) {
-                  const date = selectedDates[0];
-                  // Format date in local timezone to avoid timezone offset issues
-                  // Using local date methods instead of toISOString() which uses UTC
-                  const year = date.getFullYear();
-                  const month = String(date.getMonth() + 1).padStart(2, '0');
-                  const day = String(date.getDate()).padStart(2, '0');
-                  const formattedDate = `${year}-${month}-${day}`;
-                  setSelectedDate(formattedDate);
-                } else if (dateStr) {
-                  // dateStr sudah dalam format Y-m-d (sesuai dateFormat di DatePicker)
-                  setSelectedDate(dateStr);
-                }
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Download Daily Report Button */}
-        {isNotToday() && (
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadReport}
-              disabled={downloadingReport}
-            >
-              {downloadingReport ? "Downloading..." : "Download Report"}
-              <svg
-                className="fill-current"
-                width="20"
-                height="20"
-                viewBox="0 0 20 20"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M10.0018 14.083C9.7866 14.083 9.59255 13.9924 9.45578 13.8472L5.61586 10.0097C5.32288 9.71688 5.32272 9.242 5.61552 8.94902C5.90832 8.65603 6.3832 8.65588 6.67618 8.94868L9.25182 11.5227L9.25182 3.33301C9.25182 2.91879 9.5876 2.58301 10.0018 2.58301C10.416 2.58301 10.7518 2.91879 10.7518 3.33301L10.7518 11.5193L13.3242 8.94866C13.6172 8.65587 14.0921 8.65604 14.3849 8.94903C14.6777 9.24203 14.6775 9.7169 14.3845 10.0097L10.5761 13.8154C10.4385 13.979 10.2323 14.083 10.0018 14.083ZM4.0835 13.333C4.0835 12.9188 3.74771 12.583 3.3335 12.583C2.91928 12.583 2.5835 12.9188 2.5835 13.333V15.1663C2.5835 16.409 3.59086 17.4163 4.8335 17.4163H15.1676C16.4102 17.4163 17.4176 16.409 17.4176 15.1663V13.333C17.4176 12.9188 17.0818 12.583 16.6676 12.583C16.2533 12.583 15.9176 12.9188 15.9176 13.333V15.1663C15.9176 15.5806 15.5818 15.9163 15.1676 15.9163H4.8335C4.41928 15.9163 4.0835 15.5806 4.0835 15.1663V13.333Z"
-                  fill="currentColor"
-                />
-              </svg>
-            </Button>
-
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleRecalculateStatus}
-              disabled={recalculating}
-            >
-              {recalculating ? "Re-calculating..." : "Re-calculate Status"}
-              <svg
-                className="fill-current"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M4 12C4 7.58172 7.58172 4 12 4C14.5264 4 16.7792 5.17108 18.2454 7H16C15.4477 7 15 7.44772 15 8C15 8.55228 15.4477 9 16 9H20.5C21.0523 9 21.5 8.55228 21.5 8V3.5C21.5 2.94772 21.0523 2.5 20.5 2.5C19.9477 2.5 19.5 2.94772 19.5 3.5V5.26756C17.6318 3.25107 14.9602 2 12 2C6.47715 2 2 6.47715 2 12C2 12.5523 2.44772 13 3 13C3.55228 13 4 12.5523 4 12Z"
-                  fill="currentColor"
-                />
-                <path
-                  d="M20 12C20 16.4183 16.4183 20 12 20C9.47362 20 7.22075 18.8289 5.75463 17H8C8.55228 17 9 16.5523 9 16C9 15.4477 8.55228 15 8 15H3.5C2.94772 15 2.5 15.4477 2.5 16V20.5C2.5 21.0523 2.94772 21.5 3.5 21.5C4.05228 21.5 4.5 21.0523 4.5 20.5V18.7324C6.36824 20.7489 9.03976 22 12 22C17.5228 22 22 17.5228 22 12C22 11.4477 21.5523 11 21 11C20.4477 11 20 11.4477 20 12Z"
-                  fill="currentColor"
-                />
-              </svg>
-            </Button>
-          </div>
-        )}
-      </div>
 
       <div className="space-y-5 sm:space-y-6">
         <DataTableOne
@@ -1003,104 +1237,108 @@ export default function ArrivalSchedule() {
       </div>
 
       {/* Event Details Popover */}
-      {selectedCalendarEvent && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => {
-              setSelectedCalendarEvent(null);
-              setEventPopoverPosition(null);
-            }}
-          />
-          <div
-            className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 max-w-sm"
-            style={{
-              top: eventPopoverPosition?.y || 0,
-              left: eventPopoverPosition?.x || 0,
-            }}
-          >
-            <div className="flex justify-between items-start mb-3">
-              <h4 className="text-lg font-semibold text-gray-800 dark:text-white">
-                Event Details
-              </h4>
-              <button
-                onClick={() => {
-                  setSelectedCalendarEvent(null);
-                  setEventPopoverPosition(null);
-                }}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              <div>
-                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">BP Code:</span>
-                <p className="text-sm text-gray-800 dark:text-white font-medium">
-                  {selectedCalendarEvent.extendedProps.bpCode}
-                </p>
+      {
+        selectedCalendarEvent && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => {
+                setSelectedCalendarEvent(null);
+                setEventPopoverPosition(null);
+              }}
+            />
+            <div
+              className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 max-w-sm"
+              style={{
+                top: eventPopoverPosition?.y || 0,
+                left: eventPopoverPosition?.x || 0,
+              }}
+            >
+              <div className="flex justify-between items-start mb-3">
+                <h4 className="text-lg font-semibold text-gray-800 dark:text-white">
+                  Event Details
+                </h4>
+                <button
+                  onClick={() => {
+                    setSelectedCalendarEvent(null);
+                    setEventPopoverPosition(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
 
-              <div>
-                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Type:</span>
-                <p className="text-sm">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${selectedCalendarEvent.extendedProps.arrivalType === 'regular'
-                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                    : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                    }`}>
-                    {selectedCalendarEvent.extendedProps.arrivalType === 'regular' ? 'Regular' : 'Additional'}
-                  </span>
-                </p>
+              <div className="space-y-2">
+                <div>
+                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400">BP Code:</span>
+                  <p className="text-sm text-gray-800 dark:text-white font-medium">
+                    {selectedCalendarEvent.extendedProps.bpCode}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Type:</span>
+                  <p className="text-sm">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${selectedCalendarEvent.extendedProps.arrivalType === 'regular'
+                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                      : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                      }`}>
+                      {selectedCalendarEvent.extendedProps.arrivalType === 'regular' ? 'Regular' : 'Additional'}
+                    </span>
+                  </p>
+                </div>
+
+                {selectedCalendarEvent.start && (
+                  <div>
+                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Time:</span>
+                    <p className="text-sm text-gray-800 dark:text-white">
+                      {typeof selectedCalendarEvent.start === 'string'
+                        ? new Date(selectedCalendarEvent.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                        : selectedCalendarEvent.start instanceof Date
+                          ? selectedCalendarEvent.start.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                          : '-'
+                      }
+                      {selectedCalendarEvent.end && (
+                        typeof selectedCalendarEvent.end === 'string'
+                          ? ` - ${new Date(selectedCalendarEvent.end).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`
+                          : selectedCalendarEvent.end instanceof Date
+                            ? ` - ${selectedCalendarEvent.end.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`
+                            : ''
+                      )}
+                    </p>
+                  </div>
+                )}
+
+                {selectedCalendarEvent.extendedProps.dock && (
+                  <div>
+                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Dock:</span>
+                    <p className="text-sm text-gray-800 dark:text-white">
+                      {selectedCalendarEvent.extendedProps.dock}
+                    </p>
+                  </div>
+                )}
               </div>
-
-              {selectedCalendarEvent.start && (
-                <div>
-                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Time:</span>
-                  <p className="text-sm text-gray-800 dark:text-white">
-                    {typeof selectedCalendarEvent.start === 'string'
-                      ? new Date(selectedCalendarEvent.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-                      : selectedCalendarEvent.start instanceof Date
-                        ? selectedCalendarEvent.start.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-                        : '-'
-                    }
-                    {selectedCalendarEvent.end && (
-                      typeof selectedCalendarEvent.end === 'string'
-                        ? ` - ${new Date(selectedCalendarEvent.end).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`
-                        : selectedCalendarEvent.end instanceof Date
-                          ? ` - ${selectedCalendarEvent.end.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`
-                          : ''
-                    )}
-                  </p>
-                </div>
-              )}
-
-              {selectedCalendarEvent.extendedProps.dock && (
-                <div>
-                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Dock:</span>
-                  <p className="text-sm text-gray-800 dark:text-white">
-                    {selectedCalendarEvent.extendedProps.dock}
-                  </p>
-                </div>
-              )}
             </div>
-          </div>
-        </>
-      )}
+          </>
+        )
+      }
 
       {/* DN List Popup */}
-      {selectedDNData && (
-        <DNListPopup
-          isOpen={isPopupOpen}
-          onClose={() => setIsPopupOpen(false)}
-          dnList={selectedDNData.dnList}
-          supplier={selectedDNData.supplier}
-          platNumber={selectedDNData.platNumber}
-        />
-      )}
-    </div>
+      {
+        selectedDNData && (
+          <DNListPopup
+            isOpen={isPopupOpen}
+            onClose={() => setIsPopupOpen(false)}
+            dnList={selectedDNData.dnList}
+            supplier={selectedDNData.supplier}
+            platNumber={selectedDNData.platNumber}
+          />
+        )
+      }
+    </div >
   );
 }
 
