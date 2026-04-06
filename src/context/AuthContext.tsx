@@ -175,6 +175,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } else {
             console.log("No OIDC user found or expired after retry");
+            
+            // Clean up potentially expired OIDC user to prevent caching issues
+            if (oidcUser && oidcUser.expired) {
+               console.log("Clearing expired OIDC user from cache...");
+               try {
+                 await userManager.removeUser();
+               } catch (err) {
+                 console.error("Failed to clear expired user:", err);
+               }
+            }
+
             // Check if token exists in localStorage as fallback
             const storedToken = localStorage.getItem('auth_token');
             if (storedToken) {

@@ -69,9 +69,11 @@ export default function SSOCallback() {
         let user;
         
         if (existingUser && !existingUser.expired) {
-          console.log("User already authenticated, skipping callback");
-          user = existingUser;
-        } else {
+          // Log it but continue processing callback to ensure we get the NEW token
+          console.log("User appears authenticated, but forcing token exchange for callback code");
+          // console.log("User already authenticated, skipping callback");
+          // user = existingUser;
+        } // else {
           // Since user was redirected from Sphere (external redirect),
           // state might not be in localStorage. We need to handle this manually.
           // Try signinRedirectCallback first, if it fails due to state mismatch,
@@ -198,10 +200,9 @@ export default function SSOCallback() {
               console.log("Manual token exchange successful");
             } else {
               // Re-throw if it's a different error
-              throw callbackError;
             }
           }
-        }
+        // }
         
         // Ensure user is set
         if (!user) {
