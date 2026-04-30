@@ -31,6 +31,16 @@ class ApiService {
   clearToken() {
     this.token = null;
     localStorage.removeItem('auth_token');
+    
+    // Completely clear OIDC client cache to avoid stuck state
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('oidc.user') || key.startsWith('oidc.state'))) {
+            keysToRemove.push(key);
+        }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
   }
 
   private async request<T>(
