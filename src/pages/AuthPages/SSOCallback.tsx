@@ -63,15 +63,18 @@ export default function SSOCallback() {
         
         console.log("Code and state found in URL, proceeding with token exchange...");
         
-        // Check if we already have a user (prevent double processing)
-        // This prevents using the same authorization code twice
+        // IMPORTANT: Always clear existing OIDC session before processing a new auth code.
+        // If we skip this, a stale session from a previous/different user in localStorage
+        // will prevent the new user's token from being exchanged (logout-then-login bug).
         const existingUser = await userManager.getUser();
+        if (existingUser) {
+          console.log("Clearing existing OIDC session to process fresh auth code...");
+          await userManager.removeUser();
+        }
+        
         let user;
         
-        if (existingUser && !existingUser.expired) {
-          console.log("User already authenticated, skipping callback");
-          user = existingUser;
-        } else {
+        {
           // Since user was redirected from Sphere (external redirect),
           // state might not be in localStorage. We need to handle this manually.
           // Try signinRedirectCallback first, if it fails due to state mismatch,

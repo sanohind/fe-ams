@@ -104,62 +104,62 @@ export default function App() {
           <Route element={<AppLayout />}>
             {/* Main page - Protected routes */}
             <Route index path="/" element={
-              <ProtectedRoute requiredRoles={['admin', 'superadmin', 'operator']}>
+              <ProtectedRoute requiredRoles={['leader', 'superadmin', 'staff']}>
                 <MainPageDashboard />
               </ProtectedRoute>
             } />
             <Route path="/arrival-check" element={
-              <ProtectedRoute requiredRoles={['operator', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['staff', 'superadmin']}>
                 <ArrivalCheck />
               </ProtectedRoute>
             } />
             <Route path="/arrival-schedule" element={
-              <ProtectedRoute requiredRoles={['admin', 'operator', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['leader', 'staff', 'superadmin']}>
                 <ArrivalSchedule />
               </ProtectedRoute>
             } />
             <Route path="/checksheet" element={
-              <ProtectedRoute requiredRoles={['operator', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['staff', 'superadmin']}>
                 <CheckSheet />
               </ProtectedRoute>
             } />
             <Route path="/check-sheet-history" element={
-              <ProtectedRoute requiredRoles={['operator', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['staff', 'superadmin']}>
                 <CheckSheetHistory />
               </ProtectedRoute>
             } />
             <Route path="/level-stock" element={
-              <ProtectedRoute requiredRoles={['admin', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['leader', 'superadmin']}>
                 <LevelStock />
               </ProtectedRoute>
             } />
             <Route path="/arrival-manage" element={
-              <ProtectedRoute requiredRoles={['admin', 'superadmin', 'operator']}>
+              <ProtectedRoute requiredRoles={['leader', 'superadmin', 'staff']}>
                 <ArrivalManage />
               </ProtectedRoute>
             } />
             <Route path="/add-arrival" element={
-              <ProtectedRoute requiredRoles={['admin', 'superadmin', 'operator']}>
+              <ProtectedRoute requiredRoles={['leader', 'superadmin', 'staff']}>
                 <AddArrival />
               </ProtectedRoute>
             } />
             <Route path="/item-scan" element={
-              <ProtectedRoute requiredRoles={['operator', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['staff', 'superadmin']}>
                 <ItemScan />
               </ProtectedRoute>
             } />
             <Route path="/supplier-contacts" element={
-              <ProtectedRoute requiredRoles={['admin', 'superadmin', 'operator']}>
+              <ProtectedRoute requiredRoles={['leader', 'superadmin', 'staff']}>
                 <SupplierContacts />
               </ProtectedRoute>
             } />
             <Route path="/delivery-performance" element={
-              <ProtectedRoute requiredRoles={['admin', 'superadmin', 'operator']}>
+              <ProtectedRoute requiredRoles={['leader', 'superadmin']}>
                 <DeliveryPerformance />
               </ProtectedRoute>
             } />
             <Route path="/delivery-performance-detail/:bpCode" element={
-              <ProtectedRoute requiredRoles={['admin', 'superadmin', 'operator']}>
+              <ProtectedRoute requiredRoles={['leader', 'superadmin']}>
                 <DeliveryPerformanceDetail />
               </ProtectedRoute>
             } />

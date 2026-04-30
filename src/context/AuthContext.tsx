@@ -72,33 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user?.role) {
       return false;
     }
-
-    const { slug: userRoleSlug } = user.role;
-    const departmentCode = user.department?.code;
-    const isWarehouse = departmentCode === 'WH';
-
-    // Direct role match
-    if (roles.includes(userRoleSlug)) {
-        if ((userRoleSlug === 'admin' || userRoleSlug === 'operator') && !isWarehouse) {
-            return false;
-        }
-        if (userRoleSlug === 'superadmin') {
-            return true;
-        }
-        if ((userRoleSlug === 'admin' || userRoleSlug === 'operator') && isWarehouse) {
-            return true;
-        }
-    }
-
-    // Legacy role support
-    if (roles.includes('admin-warehouse') && userRoleSlug === 'admin' && isWarehouse) return true;
-    if (roles.includes('operator-warehouse') && userRoleSlug === 'operator' && isWarehouse) return true;
-
-    return (
-        roles.includes(userRoleSlug) ||
-        (roles.includes('admin-warehouse') && userRoleSlug === 'admin' && isWarehouse) ||
-        (roles.includes('operator-warehouse') && userRoleSlug === 'operator' && isWarehouse)
-    );
+    // Simple slug match: superadmin | leader | staff
+    return roles.includes(user.role.slug);
   };
 
   // Initialize auth state
@@ -138,11 +113,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     slug: 'superadmin',
                     level: 1
                 },
-                department: {
-                    id: 1,
-                    name: 'Warehouse',
-                    code: 'WH'
-                }
             });
 
             setIsLoading(false);

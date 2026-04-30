@@ -18,8 +18,8 @@ import apiService from "../../services/api";
 
 interface AddArrivalFormData {
   bp_code: string;
-  day_name: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
-  arrival_type: 'regular' | 'additional';
+  day_name: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday' | '';
+  arrival_type: 'regular' | 'additional' | '';
   arrival_time: string; // HH:mm
   departure_time?: string; // HH:mm
   dock?: string;
@@ -91,9 +91,9 @@ export default function AddArrival() {
 
   const [formData, setFormData] = useState<AddArrivalFormData>({
     bp_code: "",
-    day_name: "monday",
-    arrival_type: 'regular',
-    arrival_time: "08:00",
+    day_name: "",
+    arrival_type: '',
+    arrival_time: "",
     departure_time: undefined,
     dock: "",
     schedule_date: undefined,
@@ -141,9 +141,9 @@ export default function AddArrival() {
             if (schedule) {
               setFormData({
                 bp_code: schedule.bp_code || "",
-                day_name: schedule.day_name || "monday",
-                arrival_type: schedule.arrival_type || 'regular',
-                arrival_time: schedule.arrival_time ? schedule.arrival_time.substring(0, 5) : "08:00", // Extract HH:mm from HH:mm:ss
+                day_name: schedule.day_name || "",
+                arrival_type: schedule.arrival_type || '',
+                arrival_time: schedule.arrival_time ? schedule.arrival_time.substring(0, 5) : "", // Extract HH:mm from HH:mm:ss
                 departure_time: schedule.departure_time ? schedule.departure_time.substring(0, 5) : undefined,
                 dock: schedule.dock || "",
                 schedule_date: schedule.schedule_date || undefined,
@@ -252,6 +252,20 @@ export default function AddArrival() {
       if (!timeRegex.test(formData.arrival_time)) {
         newErrors.arrival_time = "Please enter a valid time format (HH:MM)";
       }
+    }
+
+    if (!formData.departure_time?.trim()) {
+      newErrors.departure_time = "Departure time is required";
+    } else {
+      // Validate time format (HH:MM)
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(formData.departure_time)) {
+        newErrors.departure_time = "Please enter a valid time format (HH:MM)";
+      }
+    }
+
+    if (!formData.arrival_type) {
+      newErrors.arrival_type = "Type is required";
     }
 
     if (formData.arrival_type === 'regular' && !formData.day_name) {
@@ -519,6 +533,7 @@ if (loading) {
             <TimeIcon className="size-6" />
           </span>
         </div>
+        {errors.departure_time && <p className="text-xs text-red-500 mt-1">{errors.departure_time}</p>}
       </div>
     </div>
 
@@ -535,6 +550,7 @@ if (loading) {
             value={formData.arrival_type} 
           />
         </div>
+        {errors.arrival_type && <p className="text-xs text-red-500 mt-1">{errors.arrival_type}</p>}
       </div>
 
       {formData.arrival_type === 'regular' && (
