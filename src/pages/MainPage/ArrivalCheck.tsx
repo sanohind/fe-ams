@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "../../context/AuthContext";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import DataTableOne from "../../components/tables/DataTables/TableOne/DataTableOne";
@@ -20,6 +21,8 @@ interface ArrivalRow {
 }
 
 export default function ArrivalCheck() {
+  const { hasRole } = useAuth();
+  const isSuperadmin = hasRole(["superadmin"]);
   const toast = useToast();
   const [rows, setRows] = useState<ArrivalRow[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -145,7 +148,7 @@ export default function ArrivalCheck() {
     ? "Search Driver Name..."
     : "Search Checked-In Driver...";
 
-  const columns: ColumnConfig[] = [
+  const baseColumns: ColumnConfig[] = [
     {
       key: "no",
       label: "No",
@@ -192,6 +195,10 @@ export default function ArrivalCheck() {
         </span>
       ),
     },
+  ];
+
+  const columns: ColumnConfig[] = isSuperadmin ? [
+    ...baseColumns,
     {
       key: "action",
       label: "Action",
@@ -219,7 +226,7 @@ export default function ArrivalCheck() {
         </button>
       ),
     },
-  ];
+  ] : baseColumns;
 
   return (
     <>

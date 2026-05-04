@@ -29,25 +29,25 @@ const mainPageItems: NavItem[] =[
     icon: <PieChartIcon />,
     name: "Dashboard",
     path: "/",
-    requiredRoles: ['leader', 'superadmin', 'staff'],
+    requiredRoles: ['leader', 'superadmin', 'staff', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
   },
   {
     icon: <UserCircleIcon />,
     name: "Supplier Contact",
     path: "/supplier-contacts",
-    requiredRoles: ['leader', 'superadmin', 'staff'],
+    requiredRoles: ['leader', 'superadmin', 'staff', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
   },
   {
     icon: <TableIcon />,
     name: "Arrival Check",
     path: "/arrival-check",
-    requiredRoles: ['staff', 'superadmin'],
+    requiredRoles: ['staff', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
   },
   {
     icon: <CalenderIcon />,
     name: "Arrival Schedule",
     path: "/arrival-schedule",
-    requiredRoles: ['leader', 'staff', 'superadmin'],
+    requiredRoles: ['leader', 'staff', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
   },
   {
     icon: <ListIcon />,
@@ -59,13 +59,13 @@ const mainPageItems: NavItem[] =[
     icon: <DocsIcon />,
     name: "Level Stock",
     path: "/level-stock",
-    requiredRoles: ['leader', 'superadmin'],
+    requiredRoles: ['leader', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
   },
   {
     icon: <BoltIcon />,
     name: "Arrival Manage",
     path: "/arrival-manage",
-    requiredRoles: ['leader', 'superadmin', 'staff'],
+    requiredRoles: ['leader', 'superadmin'],
   },
   {
     icon: <BoxIcon />,
@@ -77,7 +77,7 @@ const mainPageItems: NavItem[] =[
     icon: <TrendingUp size={20} />,
     name: "Delivery Performance",
     path: "/delivery-performance",
-    requiredRoles: ['leader', 'superadmin'],
+    requiredRoles: ['leader', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
   },
 ]
 

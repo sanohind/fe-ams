@@ -104,17 +104,17 @@ export default function App() {
           <Route element={<AppLayout />}>
             {/* Main page - Protected routes */}
             <Route index path="/" element={
-              <ProtectedRoute requiredRoles={['leader', 'superadmin', 'staff']}>
+              <ProtectedRoute requiredRoles={['leader', 'superadmin', 'staff', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor']}>
                 <MainPageDashboard />
               </ProtectedRoute>
             } />
             <Route path="/arrival-check" element={
-              <ProtectedRoute requiredRoles={['staff', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['staff', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor']}>
                 <ArrivalCheck />
               </ProtectedRoute>
             } />
             <Route path="/arrival-schedule" element={
-              <ProtectedRoute requiredRoles={['leader', 'staff', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['leader', 'staff', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor']}>
                 <ArrivalSchedule />
               </ProtectedRoute>
             } />
@@ -129,17 +129,17 @@ export default function App() {
               </ProtectedRoute>
             } />
             <Route path="/level-stock" element={
-              <ProtectedRoute requiredRoles={['leader', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['leader', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor']}>
                 <LevelStock />
               </ProtectedRoute>
             } />
             <Route path="/arrival-manage" element={
-              <ProtectedRoute requiredRoles={['leader', 'superadmin', 'staff']}>
+              <ProtectedRoute requiredRoles={['leader', 'superadmin']}>
                 <ArrivalManage />
               </ProtectedRoute>
             } />
             <Route path="/add-arrival" element={
-              <ProtectedRoute requiredRoles={['leader', 'superadmin', 'staff']}>
+              <ProtectedRoute requiredRoles={['leader', 'superadmin']}>
                 <AddArrival />
               </ProtectedRoute>
             } />
@@ -149,17 +149,17 @@ export default function App() {
               </ProtectedRoute>
             } />
             <Route path="/supplier-contacts" element={
-              <ProtectedRoute requiredRoles={['leader', 'superadmin', 'staff']}>
+              <ProtectedRoute requiredRoles={['leader', 'superadmin', 'staff', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor']}>
                 <SupplierContacts />
               </ProtectedRoute>
             } />
             <Route path="/delivery-performance" element={
-              <ProtectedRoute requiredRoles={['leader', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['leader', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor']}>
                 <DeliveryPerformance />
               </ProtectedRoute>
             } />
             <Route path="/delivery-performance-detail/:bpCode" element={
-              <ProtectedRoute requiredRoles={['leader', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['leader', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor']}>
                 <DeliveryPerformanceDetail />
               </ProtectedRoute>
             } />
