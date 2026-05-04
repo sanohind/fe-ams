@@ -341,7 +341,7 @@ const DeliveryPerformance = () => {
   if (loading) {
     return (
       <>
-        <PageMeta title="Delivery Performance" description="Monthly delivery performance summary" />
+        <PageMeta title="Delivery Performance | AMS - Sanoh Indonesia" description="Monthly delivery performance summary" />
         <PageBreadcrumb pageTitle="Delivery Performance" />
         <SkeletonDeliveryPerformance />
       </>

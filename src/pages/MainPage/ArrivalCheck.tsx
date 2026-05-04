@@ -224,8 +224,8 @@ export default function ArrivalCheck() {
   return (
     <>
       <PageMeta
-        title="Arrival Check | SPHERE by SANOH Indonesia"
-        description="This is React.js Data Tables Dashboard page for SPHERE by SANOH Indonesia"
+        title="Arrival Check | AMS - Sanoh Indonesia"
+        description="This is React.js Data Tables Dashboard page for AMS - Sanoh Indonesia"
       />
       <PageBreadcrumb pageTitle="Arrival Check" />
 

@@ -433,7 +433,7 @@ export default function AddArrival() {
 if (loading) {
   return (
     <>
-      <PageMeta title={isEditMode ? "Edit Arrival | SPHERE by SANOH Indonesia" : "Add Arrival | SPHERE by SANOH Indonesia"} description={isEditMode ? "Edit arrival schedule for SPHERE by SANOH Indonesia" : "Add new arrival schedule for SPHERE by SANOH Indonesia"} />
+      <PageMeta title={isEditMode ? "Edit Arrival | AMS - Sanoh Indonesia" : "Add Arrival | AMS - Sanoh Indonesia"} description={isEditMode ? "Edit arrival schedule for AMS - Sanoh Indonesia" : "Add new arrival schedule for AMS - Sanoh Indonesia"} />
       <PageBreadcrumb pageTitle={isEditMode ? "Edit Arrival" : "Add Arrival"} breadcrumbs={breadcrumbItems} />
       <SkeletonAddArrivalForm />
     </>
@@ -442,7 +442,7 @@ if (loading) {
 
   return (
     <>
-      <PageMeta title={isEditMode ? "Edit Arrival | SPHERE by SANOH Indonesia" : "Add Arrival | SPHERE by SANOH Indonesia"} description={isEditMode ? "Edit arrival schedule for SPHERE by SANOH Indonesia" : "Add new arrival schedule for SPHERE by SANOH Indonesia"} />
+      <PageMeta title={isEditMode ? "Edit Arrival | AMS - Sanoh Indonesia" : "Add Arrival | AMS - Sanoh Indonesia"} description={isEditMode ? "Edit arrival schedule for AMS - Sanoh Indonesia" : "Add new arrival schedule for AMS - Sanoh Indonesia"} />
       <PageBreadcrumb pageTitle={isEditMode ? "Edit Arrival" : "Add Arrival"} breadcrumbs={breadcrumbItems} />
 
       <div className="space-y-5 sm:space-y-6">

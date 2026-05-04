@@ -107,8 +107,8 @@ export default function IconGalery() {
   return (
     <>
       <PageMeta
-        title="Icon Gallery | SPHERE by SANOH Indonesia"
-        description="This is React.js Icon Gallery page for SPHERE by SANOH Indonesia"
+        title="Icon Gallery | AMS - Sanoh Indonesia"
+        description="This is React.js Icon Gallery page for AMS - Sanoh Indonesia"
       />
       <PageBreadcrumb pageTitle="Icon Gallery" />
 

@@ -172,7 +172,7 @@ export default function ArrivalManage() {
 
   return (
     <>
-      <PageMeta title="Arrival Management | SPHERE by SANOH Indonesia" description="This is React.js Arrival Management page for SPHERE by SANOH Indonesia" />
+      <PageMeta title="Arrival Management | AMS - Sanoh Indonesia" description="This is React.js Arrival Management page for AMS - Sanoh Indonesia" />
       <PageBreadcrumb pageTitle="Arrival Management" />
 
       <div className="space-y-5 sm:space-y-6">

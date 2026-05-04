@@ -887,8 +887,8 @@ export default function ArrivalSchedule() {
     return (
       <div className="overflow-x-hidden space-y-5 sm:space-y-6">
         <PageMeta
-          title="Arrival Schedule | SPHERE by SANOH Indonesia"
-          description="This is React.js Arrival Schedule page for SPHERE by SANOH Indonesia"
+          title="Arrival Schedule | AMS - Sanoh Indonesia"
+          description="This is React.js Arrival Schedule page for AMS - Sanoh Indonesia"
         />
         <PageBreadcrumb pageTitle="Arrival Schedule" />
         <SkeletonArrivalSchedule />
@@ -899,8 +899,8 @@ export default function ArrivalSchedule() {
   return (
     <div className="overflow-x-hidden space-y-5 sm:space-y-6">
       <PageMeta
-        title="Arrival Schedule | SPHERE by SANOH Indonesia"
-        description="This is React.js Arrival Schedule page for SPHERE by SANOH Indonesia"
+        title="Arrival Schedule | AMS - Sanoh Indonesia"
+        description="This is React.js Arrival Schedule page for AMS - Sanoh Indonesia"
       />
       <PageBreadcrumb pageTitle="Arrival Schedule" />
 

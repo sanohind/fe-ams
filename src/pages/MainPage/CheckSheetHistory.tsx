@@ -350,8 +350,8 @@ export default function CheckSheetHistory() {
   return (
     <div className="overflow-x-hidden space-y-5 sm:space-y-6">
       <PageMeta
-        title="Check Sheet History | SPHERE by SANOH Indonesia"
-        description="Check sheet history page for SPHERE by SANOH Indonesia"
+        title="Check Sheet History | AMS - Sanoh Indonesia"
+        description="Check sheet history page for AMS - Sanoh Indonesia"
       />
       <PageBreadcrumb
         pageTitle="Check Sheet History"

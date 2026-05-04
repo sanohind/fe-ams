@@ -174,7 +174,7 @@ export default function SupplierContacts() {
   return (
     <>
       <PageMeta
-        title="Supplier Contact | SPHERE by SANOH Indonesia"
+        title="Supplier Contact | AMS - Sanoh Indonesia"
         description="Supplier contact list from SCM"
       />
       <PageBreadcrumb pageTitle="Supplier Contacts" />

@@ -75,8 +75,8 @@ export default function CheckSheet() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate]);
 
-  // Handler untuk toggle checkbox (simpan ke backend)
-  const handleCheckboxChange = async (
+  // Handler untuk toggle checkbox (update local state)
+  const handleCheckboxChange = (
     rowIndex: number,
     field: "check_labelPort" | "check_COA_MSDS" | "check_packing_label"
   ) => {
@@ -84,25 +84,38 @@ export default function CheckSheet() {
     if (!row) return;
 
     const nextValue = !row[field];
+    setData((prev) => prev.map((item, idx) => idx === rowIndex ? { ...item, [field]: nextValue } : item));
+  };
+
+  const handleSubmitRow = async (rowIndex: number) => {
+    const row = data[rowIndex];
+    if (!row) return;
 
     const body = {
       arrival_id: row.arrival_id,
       dn_number: row.dn_number,
       check_sheet_data: {
-        label_part: (field === 'check_labelPort' ? nextValue : row.check_labelPort) ? 'OK' : 'NOT_OK',
-        coa_msds: (field === 'check_COA_MSDS' ? nextValue : row.check_COA_MSDS) ? 'OK' : 'NOT_OK',
-        packing_condition: (field === 'check_packing_label' ? nextValue : row.check_packing_label) ? 'OK' : 'NOT_OK',
+        label_part: row.check_labelPort ? 'OK' : 'NOT_OK',
+        coa_msds: row.check_COA_MSDS ? 'OK' : 'NOT_OK',
+        packing_condition: row.check_packing_label ? 'OK' : 'NOT_OK',
       },
     } as const;
 
     try {
-      await apiService.submitCheckSheet(body as any);
-      // Update UI state
-      setData((prev) => prev.map((item, idx) => idx === rowIndex ? { ...item, [field]: nextValue } : item));
-      toast.success('Checklist updated successfully!', { title: 'Success' });
+      setLoading(true);
+      const res = await apiService.submitCheckSheet(body as any);
+      if (res.success) {
+        toast.success('Check sheet submitted successfully!', { title: 'Success' });
+        // Remove from list
+        setData((prev) => prev.filter((_, idx) => idx !== rowIndex));
+      } else {
+        toast.error('Failed to submit check sheet', { title: 'Error' });
+      }
     } catch (e: any) {
-      const errorMsg = e?.message || 'Failed to update checklist';
+      const errorMsg = e?.message || 'Failed to submit check sheet';
       toast.error(errorMsg, { title: 'Error' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -200,13 +213,30 @@ export default function CheckSheet() {
         </div>
       ),
     },
+    {
+      key: "action",
+      label: "Action",
+      sortable: false,
+      rowSpan: 2,
+      render: (_value: any, _row: CheckSheetData, rowIndex: number = 0) => (
+        <div className="flex justify-center">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => handleSubmitRow(rowIndex)}
+          >
+            Submit
+          </Button>
+        </div>
+      ),
+    },
   ];
 
   return (
     <>
       <PageMeta
-        title="Check Sheet | SPHERE by SANOH Indonesia"
-        description="This is React.js Check Sheet page for SPHERE by SANOH Indonesia"
+        title="Check Sheet | AMS - Sanoh Indonesia"
+        description="This is React.js Check Sheet page for AMS - Sanoh Indonesia"
       />
       <PageBreadcrumb pageTitle="Check Sheet" />
       <div className="space-y-5 sm:space-y-6">

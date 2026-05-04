@@ -573,8 +573,8 @@ export default function ItemScan() {
   return (
     <>
       <PageMeta
-        title="Item Scan | SPHERE by SANOH Indonesia"
-        description="This is React.js Data Tables Dashboard page for SPHERE by SANOH Indonesia"
+        title="Item Scan | AMS - Sanoh Indonesia"
+        description="This is React.js Data Tables Dashboard page for AMS - Sanoh Indonesia"
       />
       <PageBreadcrumb pageTitle="Item Scan" />
       

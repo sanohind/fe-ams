@@ -582,8 +582,8 @@ export default function Dashboard() {
     return (
       <div className="overflow-x-hidden space-y-5 sm:space-y-6">
         <PageMeta
-          title="Dashboard | SPHERE by SANOH Indonesia"
-          description="This is React.js Data Tables Dashboard page for SPHERE by SANOH Indonesia"
+          title="Dashboard | AMS - Sanoh Indonesia"
+          description="This is React.js Data Tables Dashboard page for AMS - Sanoh Indonesia"
         />
         <PageBreadcrumb pageTitle="Dashboard" />
         <SkeletonDashboardPage />
@@ -594,8 +594,8 @@ export default function Dashboard() {
   return (
     <div className="overflow-x-hidden space-y-5 sm:space-y-6">
       <PageMeta
-        title="Dashboard | SPHERE by SANOH Indonesia"
-        description="This is React.js Data Tables Dashboard page for SPHERE by SANOH Indonesia"
+        title="Dashboard | AMS - Sanoh Indonesia"
+        description="This is React.js Data Tables Dashboard page for AMS - Sanoh Indonesia"
       />
       <PageBreadcrumb pageTitle="Dashboard" />
 

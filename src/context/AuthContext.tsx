@@ -8,6 +8,7 @@ interface AppUser {
   name: string;
   email: string;
   username: string;
+  avatar?: string;
   role: {
     id: number;
     name: string;
