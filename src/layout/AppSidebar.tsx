@@ -7,7 +7,6 @@ import {
   DocsIcon,
   HorizontaLDots,
   ListIcon,
-  PieChartIcon,
   TableIcon,
   UserCircleIcon,
   BoxIcon,
