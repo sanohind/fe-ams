@@ -13,6 +13,14 @@ interface DNItem {
   quantityDN: number;
   quantityActual: number;
   status?: string;
+  items?: {
+    part_no: string;
+    part_name?: string | null;
+    qty_per_box?: number | null;
+    expected_quantity: number;
+    scanned_quantity: number;
+    match_status?: string;
+  }[];
 }
 
 // Interface untuk data dashboard dengan multiple DN
@@ -200,6 +208,7 @@ export default function Dashboard() {
             quantityDN: Number(dn.quantity_dn) || 0,
             quantityActual: Number(dn.quantity_actual) || 0,
             status: dn.scan_status || 'Pending',
+            items: dn.items || [],
           }));
 
           setSelectedDNData({

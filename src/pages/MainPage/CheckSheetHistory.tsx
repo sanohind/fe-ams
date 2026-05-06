@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { useAuth } from "../../context/AuthContext";
 import Badge from "../../components/ui/badge/Badge";
 import Button from "../../components/ui/button/Button";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
@@ -48,6 +49,7 @@ export default function CheckSheetHistory() {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const toast = useToast();
+  const { hasRole } = useAuth();
 
   const fetchData = async () => {
     try {
@@ -357,7 +359,9 @@ export default function CheckSheetHistory() {
         pageTitle="Check Sheet History"
         breadcrumbs={[
           { label: "Home", path: "/" },
-          { label: "Check Sheet", path: "/checksheet" },
+          ...(hasRole(['staff', 'superadmin']) 
+            ? [{ label: "Check Sheet", path: "/checksheet" }] 
+            : []),
           { label: "Check Sheet History" },
         ]}
       />

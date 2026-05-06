@@ -1,7 +1,7 @@
-import { HashRouter as Router, Routes, Route } from "react-router";
+import { HashRouter as Router, Routes, Route, Navigate } from "react-router";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Ecommerce from "./pages/Dashboard/Ecommerce";
 import Stocks from "./pages/Dashboard/Stocks";
@@ -81,6 +81,14 @@ import DeliveryPerformanceDetail from "./pages/MainPage/DeliveryPerformanceDetai
 import DriverCheck from "./pages/PublicPage/DriverCheck";
 import PublicDashboard from "./pages/PublicPage/PublicDashboard";
 
+function HomeRedirect() {
+  const { hasRole } = useAuth();
+  if (hasRole(['staff'])) {
+    return <Navigate to="/item-scan" replace />;
+  }
+  return <MainPageDashboard />;
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -105,16 +113,16 @@ export default function App() {
             {/* Main page - Protected routes */}
             <Route index path="/" element={
               <ProtectedRoute requiredRoles={['leader', 'superadmin', 'staff', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor']}>
-                <MainPageDashboard />
+                <HomeRedirect />
               </ProtectedRoute>
             } />
             <Route path="/arrival-check" element={
-              <ProtectedRoute requiredRoles={['staff', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor']}>
+              <ProtectedRoute requiredRoles={['superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor']}>
                 <ArrivalCheck />
               </ProtectedRoute>
             } />
             <Route path="/arrival-schedule" element={
-              <ProtectedRoute requiredRoles={['leader', 'staff', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor']}>
+              <ProtectedRoute requiredRoles={['leader', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor']}>
                 <ArrivalSchedule />
               </ProtectedRoute>
             } />
@@ -124,7 +132,7 @@ export default function App() {
               </ProtectedRoute>
             } />
             <Route path="/check-sheet-history" element={
-              <ProtectedRoute requiredRoles={['staff', 'superadmin']}>
+              <ProtectedRoute requiredRoles={['staff', 'superadmin', 'leader', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor']}>
                 <CheckSheetHistory />
               </ProtectedRoute>
             } />
@@ -149,7 +157,7 @@ export default function App() {
               </ProtectedRoute>
             } />
             <Route path="/supplier-contacts" element={
-              <ProtectedRoute requiredRoles={['leader', 'superadmin', 'staff', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor']}>
+              <ProtectedRoute requiredRoles={['leader', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor']}>
                 <SupplierContacts />
               </ProtectedRoute>
             } />

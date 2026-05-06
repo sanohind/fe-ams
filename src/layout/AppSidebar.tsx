@@ -13,7 +13,7 @@ import {
   BoxIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
-import { BoltIcon, TrendingUp } from "lucide-react";
+import { BoltIcon, TrendingUp, History, LayoutDashboard } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 type NavItem = {
@@ -26,28 +26,34 @@ type NavItem = {
 
 const mainPageItems: NavItem[] =[
   {
-    icon: <PieChartIcon />,
+    icon: <LayoutDashboard />,
     name: "Dashboard",
     path: "/",
-    requiredRoles: ['leader', 'superadmin', 'staff', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
+    requiredRoles: ['leader', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
   },
   {
     icon: <UserCircleIcon />,
     name: "Supplier Contact",
     path: "/supplier-contacts",
-    requiredRoles: ['leader', 'superadmin', 'staff', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
+    requiredRoles: ['leader', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
   },
   {
     icon: <TableIcon />,
     name: "Arrival Check",
     path: "/arrival-check",
-    requiredRoles: ['staff', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
+    requiredRoles: ['superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
   },
   {
     icon: <CalenderIcon />,
     name: "Arrival Schedule",
     path: "/arrival-schedule",
-    requiredRoles: ['leader', 'staff', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
+    requiredRoles: ['leader', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
+  },
+    {
+    icon: <BoxIcon />,
+    name: "Item Scan",
+    path: "/item-scan",
+    requiredRoles: ['staff', 'superadmin'],
   },
   {
     icon: <ListIcon />,
@@ -56,8 +62,14 @@ const mainPageItems: NavItem[] =[
     requiredRoles: ['staff', 'superadmin'],
   },
   {
+    icon: <History />,
+    name: "Checksheet History",
+    path: "/check-sheet-history",
+    requiredRoles: ['leader', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
+  },
+  {
     icon: <DocsIcon />,
-    name: "Level Stock",
+    name: "Stock Level",
     path: "/level-stock",
     requiredRoles: ['leader', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
   },
@@ -67,12 +79,7 @@ const mainPageItems: NavItem[] =[
     path: "/arrival-manage",
     requiredRoles: ['leader', 'superadmin'],
   },
-  {
-    icon: <BoxIcon />,
-    name: "Item Scan",
-    path: "/item-scan",
-    requiredRoles: ['staff', 'superadmin'],
-  },
+
   {
     icon: <TrendingUp size={20} />,
     name: "Delivery Performance",
