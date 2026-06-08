@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import Button from "../../components/ui/button/Button";
@@ -10,6 +10,7 @@ import { SkeletonArrivalManage } from "../../components/ui/skeleton/Skeleton";
 import { useToast } from "../../hooks/useToast";
 import apiService from "../../services/api";
 import ConfirmationPopup from "../../components/popups/ConfirmationPopup";
+import Badge from "../../components/ui/badge/Badge";
 
 // Interface untuk data arrival management
 type ScheduleType = 'regular' | 'additional';
@@ -28,22 +29,43 @@ interface ArrivalManageData {
   updated_at: string;
 }
 
+interface Pagination {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  from: number | null;
+  to: number | null;
+}
+
 export default function ArrivalManage() {
   const navigate = useNavigate();
   const toast = useToast();
   const [data, setData] = useState<ArrivalManageData[]>([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ArrivalManageData | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [pagination, setPagination] = useState<Pagination>({
+    current_page: 1,
+    last_page: 1,
+    per_page: 10,
+    total: 0,
+    from: null,
+    to: null,
+  });
 
-  const loadData = async () => {
+  const loadData = useCallback(async (page: number) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiService.getArrivalManageList();
+      const res = await apiService.getArrivalManageList({ page, per_page: 10 });
       if (res.success && res.data) {
         setData(res.data as ArrivalManageData[]);
+        if ((res as any).pagination) {
+          setPagination((res as any).pagination);
+        }
       } else {
         setError(res.message || "Failed to load schedules");
       }
@@ -51,12 +73,17 @@ export default function ArrivalManage() {
       setError(e?.message || "Failed to load schedules");
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    loadData(1);
+  }, [loadData]);
+
+  const handlePageChange = (page: number) => {
+    loadData(page);
+  };
 
   const handleEdit = (id: number) => {
     navigate(`/add-arrival?id=${id}`);
@@ -67,7 +94,8 @@ export default function ArrivalManage() {
     try {
       setIsDeleting(true);
       await apiService.deleteArrivalSchedule(deleteTarget.id);
-      setData((prev) => prev.filter((item) => item.id !== deleteTarget.id));
+      // Reload current page after delete
+      loadData(pagination.current_page);
       toast.success('Arrival schedule deleted successfully!', { title: 'Success' });
     } catch (e: any) {
       const errorMsg = e?.message || 'Failed to delete schedule';
@@ -91,17 +119,17 @@ export default function ArrivalManage() {
     {
       key: "id",
       label: "No",
-      sortable: true,
+      sortable: false,
     },
     {
       key: "bp_code",
       label: "Supplier Code",
-      sortable: true,
+      sortable: false,
     },
     {
       key: "bp_name",
       label: "Supplier",
-      sortable: true,
+      sortable: false,
       render: (value: string) => {
         return <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">{value || '-'}</span>;
       },
@@ -109,12 +137,12 @@ export default function ArrivalManage() {
     {
       key: "arrival_time",
       label: "Arrival",
-      sortable: true,
+      sortable: false,
     },
     {
       key: "departure_time",
       label: "Departure",
-      sortable: true,
+      sortable: false,
       render: (value: string | null) => {
         return <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">{value || '-'}</span>;
       },
@@ -122,7 +150,7 @@ export default function ArrivalManage() {
     {
       key: "day_name",
       label: "Day",
-      sortable: true,
+      sortable: false,
       render: (value: string) => {
         return <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">{capitalizeDay(value)}</span>;
       },
@@ -130,19 +158,19 @@ export default function ArrivalManage() {
     {
       key: "dock",
       label: "Dock",
-      sortable: true,
+      sortable: false,
     },
     {
       key: "arrival_type",
       label: "Type",
-      sortable: true,
+      sortable: false,
       render: (value: string) => {
-        const colors: Record<string, string> = {
-          regular: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-          additional: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
+        const colors: Record<string, "success" | "info" | "light"> = {
+          regular: "success",
+          additional: "info",
         };
         const label = value.charAt(0).toUpperCase() + value.slice(1);
-        return <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${colors[value] || "bg-gray-100 text-gray-800"}`}>{label}</span>;
+        return <Badge variant="light" color={colors[value] || "light"}>{label}</Badge>;
       },
     },
     {
@@ -176,21 +204,24 @@ export default function ArrivalManage() {
       <PageBreadcrumb pageTitle="Arrival Management" />
 
       <div className="space-y-5 sm:space-y-6">
-        {loading ? (
+        {initialLoading ? (
           <SkeletonArrivalManage />
         ) : (
           <>
-            {/* Data Table with Action Button */}
+            {/* Data Table with server-side pagination */}
             <DataTableOne
               title="Arrival Schedule List"
               data={data}
               columns={columns}
-              defaultItemsPerPage={10}
-              itemsPerPageOptions={[5, 10, 15, 20]}
-              defaultSortKey="id"
-              defaultSortOrder="asc"
-              searchable={true}
-              searchPlaceholder="Search suppliers, schedules, docks..."
+              searchable={false}
+              serverSidePagination={true}
+              serverCurrentPage={pagination.current_page}
+              serverTotalPages={pagination.last_page}
+              serverTotalItems={pagination.total}
+              serverFrom={pagination.from ?? undefined}
+              serverTo={pagination.to ?? undefined}
+              onServerPageChange={handlePageChange}
+              serverLoading={loading}
               actionButton={
                 <Button
                   variant="primary"

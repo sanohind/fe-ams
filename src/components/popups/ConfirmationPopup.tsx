@@ -95,7 +95,7 @@ export default function ConfirmationPopup({
 
           {/* Content */}
           <div className="p-6">
-            <p className="text-gray-500 dark:text-gray-300">
+            <p className="text-gray-500 dark:text-gray-300 whitespace-pre-line">
               {message}
             </p>
           </div>

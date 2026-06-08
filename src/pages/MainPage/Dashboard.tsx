@@ -6,6 +6,7 @@ import DataTableOne, { ColumnConfig } from "../../components/tables/DataTables/T
 import DNListPopup from "../../components/popups/DNListPopup";
 import { SkeletonDashboardPage } from "../../components/ui/skeleton/Skeleton";
 import apiService from "../../services/api";
+import Badge from "../../components/ui/badge/Badge";
 
 // Interface untuk DN Item
 interface DNItem {
@@ -302,41 +303,20 @@ export default function Dashboard() {
       string,
       {
         label: string;
-        className: string;
+        color: "primary" | "success" | "error" | "warning" | "info" | "light" | "dark";
       }
     > = {
-      advance: {
-        label: "Advance",
-        className:
-          "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-      },
-      on_time: {
-        label: "On time",
-        className:
-          "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-      },
-      ontime: {
-        label: "On time",
-        className:
-          "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-      },
-      delay: {
-        label: "Delay",
-        className:
-          "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-      },
-      pending: {
-        label: "Pending",
-        className:
-          "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-      },
+      advance: { label: "Advance", color: "info" },
+      on_time: { label: "On time", color: "success" },
+      ontime: { label: "On time", color: "success" },
+      delay: { label: "Delay", color: "error" },
+      pending: { label: "Pending", color: "warning" },
     };
 
     return (
       badgeMap[normalized] || {
         label: formatFallbackLabel(status),
-        className:
-          "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
+        color: "light",
       }
     );
   };
@@ -429,11 +409,9 @@ export default function Dashboard() {
         }
 
         return (
-          <span
-            className={`px-2.5 py-1 text-xs font-medium rounded-full ${badge.className}`}
-          >
+          <Badge variant="light" color={badge.color}>
             {badge.label}
-          </span>
+          </Badge>
         );
       }
     },
@@ -544,16 +522,16 @@ export default function Dashboard() {
       sortable: true,
       group: "Status",
       render: (value) => {
-        const statusColors: Record<string, string> = {
-          "Completed": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-          "In Progress": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-          "Pending": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+        const statusColors: Record<string, "success" | "info" | "warning"> = {
+          "Completed": "success",
+          "In Progress": "info",
+          "Pending": "warning",
         };
 
         return (
-          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors[value] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"}`}>
+          <Badge variant="light" color={statusColors[value as keyof typeof statusColors] || "light"}>
             {value}
-          </span>
+          </Badge>
         );
       }
     },
@@ -563,19 +541,19 @@ export default function Dashboard() {
       sortable: true,
       group: "Status",
       render: (value) => {
-        const statusColors: Record<string, string> = {
-          "Pending": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-          "On Commitment": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-          "Incomplete Qty": "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
-          "Outstanding DN": "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
-          "Delay": "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-          "No Show": "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
+        const statusColors: Record<string, "warning" | "success" | "error" | "primary" | "light"> = {
+          "Pending": "warning",
+          "On Commitment": "success",
+          "Incomplete Qty": "warning",
+          "Outstanding DN": "primary",
+          "Delay": "error",
+          "No Show": "light",
         };
 
         return (
-          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors[value] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"}`}>
+          <Badge variant="light" color={statusColors[value as keyof typeof statusColors] || "light"}>
             {value}
-          </span>
+          </Badge>
         );
       }
     },

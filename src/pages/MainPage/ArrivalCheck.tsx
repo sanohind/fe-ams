@@ -8,6 +8,7 @@ import ConfirmationPopup from "../../components/popups/ConfirmationPopup";
 import { SkeletonArrivalCheck } from "../../components/ui/skeleton/Skeleton";
 import { useToast } from "../../hooks/useToast";
 import apiService from "../../services/api";
+import Badge from "../../components/ui/badge/Badge";
 
 interface ArrivalRow {
   no: number;
@@ -167,15 +168,12 @@ export default function ArrivalCheck() {
       render: (_value: any, row: ArrivalRow) => (
         <div className="flex items-center gap-2">
           <span className="text-gray-900 dark:text-white text-theme-sm">{row.supplier}</span>
-          <span
-            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-              row.arrivalType === "additional"
-                ? "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400"
-                : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-            }`}
+          <Badge
+            variant="light"
+            color={row.arrivalType === "additional" ? "primary" : "info"}
           >
             {row.arrivalType === "additional" ? "Additional" : "Regular"}
-          </span>
+          </Badge>
         </div>
       ),
     },
@@ -184,15 +182,12 @@ export default function ArrivalCheck() {
       label: "Status",
       sortable: true,
       render: (value: string) => (
-        <span
-          className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${
-            value === "Checked In"
-              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-              : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-          }`}
+        <Badge
+          variant="light"
+          color={value === "Checked In" ? "success" : "warning"}
         >
           {value}
-        </span>
+        </Badge>
       ),
     },
   ];

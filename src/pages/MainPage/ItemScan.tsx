@@ -14,6 +14,7 @@ import apiService from "../../services/api";
 interface DnItem {
   no: number;
   part_no: string;
+  supplier_item_no?: string;
   part_name: string;
   qty_per_box: number;
   total_quantity: number;
@@ -54,6 +55,7 @@ const columns: ColumnConfig[] = [
         key: "part_no",
         label: "Part No",
         sortable: true,
+        render: (_value: string, row: DnItem) => row.supplier_item_no || "",
     },
     {
         key: "part_name",

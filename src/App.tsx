@@ -78,6 +78,8 @@ import SupplierContacts from "./pages/MainPage/SupplierContacts";
 import CheckSheetHistory from "./pages/MainPage/CheckSheetHistory";
 import DeliveryPerformance from "./pages/MainPage/DeliveryPerformance";
 import DeliveryPerformanceDetail from "./pages/MainPage/DeliveryPerformanceDetail";
+import PoReceiptMonitor from "./pages/MainPage/PoReceiptMonitor";
+import PoReceiptPrintLabel from "./pages/MainPage/PoReceiptPrintLabel";
 import DriverCheck from "./pages/PublicPage/DriverCheck";
 import PublicDashboard from "./pages/PublicPage/PublicDashboard";
 
@@ -171,6 +173,11 @@ export default function App() {
                 <DeliveryPerformanceDetail />
               </ProtectedRoute>
             } />
+            <Route path="/po-receipt" element={
+              <ProtectedRoute requiredRoles={['leader', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor', 'staff']}>
+                <PoReceiptMonitor />
+              </ProtectedRoute>
+            } />
             <Route path="/icon-galery" element={<IconGalery />} />
 
             {/* Dashboard */}
@@ -252,6 +259,7 @@ export default function App() {
           {/* Public Pages - No Authentication Required */}
           <Route path="/driver" element={<DriverCheck />} />
           <Route path="/arrival-dashboard" element={<PublicDashboard />} />
+          <Route path="/po-receipt-print-label" element={<PoReceiptPrintLabel />} />
 
           {/* Fallback Route */}
           <Route path="*" element={<NotFound />} />

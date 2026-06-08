@@ -12,7 +12,7 @@ import {
   BoxIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
-import { BoltIcon, TrendingUp, History, LayoutDashboard } from "lucide-react";
+import { BoltIcon, TrendingUp, History, LayoutDashboard, Receipt } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 type NavItem = {
@@ -23,7 +23,7 @@ type NavItem = {
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
 
-const mainPageItems: NavItem[] =[
+const mainPageItems: NavItem[] = [
   {
     icon: <LayoutDashboard />,
     name: "Dashboard",
@@ -36,6 +36,18 @@ const mainPageItems: NavItem[] =[
     path: "/supplier-contacts",
     requiredRoles: ['leader', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
   },
+    {
+    icon: <BoltIcon />,
+    name: "Arrival Manage",
+    path: "/arrival-manage",
+    requiredRoles: ['leader', 'superadmin'],
+  },
+    {
+    icon: <CalenderIcon />,
+    name: "Arrival Schedule",
+    path: "/arrival-schedule",
+    requiredRoles: ['leader', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
+  },
   {
     icon: <TableIcon />,
     name: "Arrival Check",
@@ -43,12 +55,6 @@ const mainPageItems: NavItem[] =[
     requiredRoles: ['superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
   },
   {
-    icon: <CalenderIcon />,
-    name: "Arrival Schedule",
-    path: "/arrival-schedule",
-    requiredRoles: ['leader', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
-  },
-    {
     icon: <BoxIcon />,
     name: "Item Scan",
     path: "/item-scan",
@@ -73,12 +79,11 @@ const mainPageItems: NavItem[] =[
     requiredRoles: ['leader', 'superadmin', 'president-director', 'division-head', 'general-manager', 'manager', 'supervisor'],
   },
   {
-    icon: <BoltIcon />,
-    name: "Arrival Manage",
-    path: "/arrival-manage",
+    icon: <Receipt size={20} />,
+    name: "PO Receipt Monitor",
+    path: "/po-receipt",
     requiredRoles: ['leader', 'superadmin'],
   },
-
   {
     icon: <TrendingUp size={20} />,
     name: "Delivery Performance",
@@ -112,10 +117,9 @@ const AppSidebar: React.FC = () => {
   return (
     <aside
       className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
-        ${
-          isExpanded || isMobileOpen
-            ? "w-[290px]"
-            : isHovered
+        ${isExpanded || isMobileOpen
+          ? "w-[290px]"
+          : isHovered
             ? "w-[290px]"
             : "w-[90px]"
         }
@@ -125,9 +129,8 @@ const AppSidebar: React.FC = () => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={`py-8 flex ${
-          !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
-        }`}
+        className={`py-8 flex ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
+          }`}
       >
         <Link to="/">
           {isExpanded || isHovered || isMobileOpen ? (
@@ -150,9 +153,9 @@ const AppSidebar: React.FC = () => {
               </div>
             </>
           ) : (
-            <> 
+            <>
               <img
-              className="dark:hidden"
+                className="dark:hidden"
                 src="/images/logo/SANOH-LITE-01.png"
                 alt="Logo"
                 width={30}
@@ -174,11 +177,10 @@ const AppSidebar: React.FC = () => {
           <div className="flex flex-col gap-4">
             <div>
               <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
+                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${!isExpanded && !isHovered
                     ? "lg:justify-center"
                     : "justify-start"
-                }`}
+                  }`}
               >
                 {isExpanded || isHovered || isMobileOpen ? (
                   "Menu"
@@ -192,16 +194,14 @@ const AppSidebar: React.FC = () => {
                     {item.path ? (
                       <Link
                         to={item.path}
-                        className={`menu-item group ${
-                          isActive(item.path) ? "menu-item-active" : "menu-item-inactive"
-                        }`}
+                        className={`menu-item group ${isActive(item.path) ? "menu-item-active" : "menu-item-inactive"
+                          }`}
                       >
                         <span
-                          className={`menu-item-icon-size ${
-                            isActive(item.path)
+                          className={`menu-item-icon-size ${isActive(item.path)
                               ? "menu-item-icon-active"
                               : "menu-item-icon-inactive"
-                          }`}
+                            }`}
                         >
                           {item.icon}
                         </span>

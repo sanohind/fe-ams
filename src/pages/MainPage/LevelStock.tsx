@@ -4,6 +4,7 @@ import PageMeta from "../../components/common/PageMeta";
 import DataTableOne, { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
 import { SkeletonDataTable, Skeleton } from "../../components/ui/skeleton/Skeleton";
 import apiService from "../../services/api";
+import Badge from "../../components/ui/badge/Badge";
 
 // Interface untuk data stock
 interface StockData {
@@ -47,11 +48,11 @@ const getStockStatus = (
   max_stock: number
 ): { status: string; color: string } => {
   if (onhand < min_stock) {
-    return { status: "Critical", color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400" };
+    return { status: "Critical", color: "error" };
   } else if (onhand > max_stock) {
-    return { status: "Overstock", color: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400" };
+    return { status: "Overstock", color: "warning" };
   } else {
-    return { status: "Normal", color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" };
+    return { status: "Normal", color: "success" };
   }
 };
 
@@ -179,9 +180,9 @@ const columns: ColumnConfig[] = [
     label: "Status",
     sortable: true,
     render: (value: string, row: EnhancedStockData) => (
-      <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${row.statusColor}`}>
+      <Badge variant="light" color={row.statusColor as any}>
         {value}
-      </span>
+      </Badge>
     )
   },
 ];
@@ -194,10 +195,10 @@ const columns: ColumnConfig[] = [
   return (
     <div className="overflow-x-hidden space-y-5 sm:space-y-6">
       <PageMeta
-        title="Level Stock | AMS - Sanoh Indonesia"
+        title="Stock Level | AMS - Sanoh Indonesia"
         description="This is React.js Data Tables Dashboard page for AMS - Sanoh Indonesia"
       />
-      <PageBreadcrumb pageTitle="Level Stock" />
+      <PageBreadcrumb pageTitle="Stock Level" />
       
       {loading ? (
         <>

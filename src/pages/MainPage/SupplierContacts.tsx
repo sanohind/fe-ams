@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import DataTableOne, { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
 import { SkeletonSupplierContacts } from "../../components/ui/skeleton/Skeleton";
 import apiService from "../../services/api";
+import Badge from "../../components/ui/badge/Badge";
 
 interface SupplierContact {
   bp_code: string;
@@ -14,18 +15,47 @@ interface SupplierContact {
   emails: string[];
 }
 
+interface Pagination {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  from: number | null;
+  to: number | null;
+}
+
 export default function SupplierContacts() {
   const [contacts, setContacts] = useState<SupplierContact[]>([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<Pagination>({
+    current_page: 1,
+    last_page: 1,
+    per_page: 10,
+    total: 0,
+    from: null,
+    to: null,
+  });
 
-  const loadData = async () => {
+  // Search debounce
+  const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const loadData = useCallback(async (page: number, search: string) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiService.getSupplierContacts();
+      const res = await apiService.getSupplierContacts({
+        page,
+        per_page: 10,
+        search: search || undefined,
+      });
       if (res.success && res.data) {
         setContacts(res.data as SupplierContact[]);
+        if ((res as any).pagination) {
+          setPagination((res as any).pagination);
+        }
       } else {
         setError(res.message || "Failed to fetch supplier contacts");
       }
@@ -33,26 +63,39 @@ export default function SupplierContacts() {
       setError(e?.message || "Failed to fetch supplier contacts");
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadData();
   }, []);
 
-  const statusColor = (status?: string | null) => {
+  useEffect(() => {
+    loadData(1, "");
+  }, [loadData]);
+
+  const handlePageChange = (page: number) => {
+    loadData(page, searchQuery);
+  };
+
+  const handleSearch = (search: string) => {
+    setSearchQuery(search);
+    if (searchRef.current) clearTimeout(searchRef.current);
+    searchRef.current = setTimeout(() => {
+      loadData(1, search);
+    }, 400);
+  };
+
+  const statusColor = (status?: string | null): "success" | "error" | "primary" | "light" => {
     if (!status) {
-      return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300";
+      return "light";
     }
 
     const normalized = status.toLowerCase();
     if (normalized.includes("active")) {
-      return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+      return "success";
     }
     if (normalized.includes("inactive") || normalized.includes("suspend")) {
-      return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+      return "error";
     }
-    return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
+    return "primary";
   };
 
   const columns: ColumnConfig[] = useMemo(() => [
@@ -62,14 +105,16 @@ export default function SupplierContacts() {
       sortable: false,
       render: (_value: any, _row: SupplierContact, rowIndex?: number) => (
         <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">
-          {rowIndex !== undefined ? rowIndex + 1 : "-"}
+          {rowIndex !== undefined
+            ? (pagination.from ?? 1) + rowIndex
+            : "-"}
         </span>
       ),
     },
     {
       key: "bp_code",
       label: "Supplier Code",
-      sortable: true,
+      sortable: false,
       render: (value: string) => (
         <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">
           {value || "-"}
@@ -79,7 +124,7 @@ export default function SupplierContacts() {
     {
       key: "bp_name",
       label: "Supplier Name",
-      sortable: true,
+      sortable: false,
       render: (value: string) => (
         <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">
           {value || "-"}
@@ -89,17 +134,17 @@ export default function SupplierContacts() {
     {
       key: "status",
       label: "Status",
-      sortable: true,
+      sortable: false,
       render: (value: string | null) => (
-        <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColor(value)}`}>
+        <Badge variant="light" color={statusColor(value) as any}>
           {value || "Unknown"}
-        </span>
+        </Badge>
       ),
     },
     {
       key: "phone",
       label: "Phone",
-      sortable: true,
+      sortable: false,
       render: (value: string | null) => (
         <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">
           {value || "-"}
@@ -109,7 +154,7 @@ export default function SupplierContacts() {
     {
       key: "fax",
       label: "Fax",
-      sortable: true,
+      sortable: false,
       render: (value: string | null) => (
         <span className="font-normal dark:text-gray-400/90 text-gray-800 text-theme-sm">
           {value || "-"}
@@ -169,7 +214,7 @@ export default function SupplierContacts() {
         </div>
       ),
     },
-  ], []);
+  ], [pagination.from]);
 
   return (
     <>
@@ -180,21 +225,26 @@ export default function SupplierContacts() {
       <PageBreadcrumb pageTitle="Supplier Contacts" />
 
       <div className="space-y-5 sm:space-y-6">
-        {loading ? (
+        {initialLoading ? (
           <SkeletonSupplierContacts />
         ) : (
           <>
-            {/* Data Table */}
+            {/* Data Table — server-side pagination */}
             <DataTableOne
               title="Contact List"
               data={contacts}
               columns={columns}
-              defaultItemsPerPage={10}
-              itemsPerPageOptions={[5, 10, 15, 20]}
-              defaultSortKey="bp_name"
-              defaultSortOrder="asc"
               searchable={true}
               searchPlaceholder="Search suppliers, codes, contacts..."
+              serverSidePagination={true}
+              serverCurrentPage={pagination.current_page}
+              serverTotalPages={pagination.last_page}
+              serverTotalItems={pagination.total}
+              serverFrom={pagination.from ?? undefined}
+              serverTo={pagination.to ?? undefined}
+              onServerPageChange={handlePageChange}
+              onServerSearch={handleSearch}
+              serverLoading={loading}
             />
             {error && <div className="text-sm text-red-500">{error}</div>}
           </>
@@ -202,4 +252,4 @@ export default function SupplierContacts() {
       </div>
     </>
   );
-}
+}

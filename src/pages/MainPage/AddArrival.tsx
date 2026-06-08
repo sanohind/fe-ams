@@ -135,7 +135,7 @@ export default function AddArrival() {
       setLoading(true);
       (async () => {
         try {
-          const res = await apiService.getArrivalManageList();
+          const res = await apiService.getArrivalManageList({ all: true });
           if (res.success && res.data) {
             const schedule = (res.data as any[]).find((item: any) => item.id === editId);
             if (schedule) {

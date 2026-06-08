@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { FileText, Clock, Calendar } from "lucide-react";
+import { FileText, Calendar, Clock } from "lucide-react";
 import DataTableOne, { ColumnConfig } from "../../components/tables/DataTables/TableOne/DataTableOne";
 import DNListPopup from "../../components/popups/DNListPopup";
 import ThemeTogglerTwo from "../../components/common/ThemeTogglerTwo";
 import apiService from "../../services/api";
+import Badge from "../../components/ui/badge/Badge";
 
 // Interface untuk DN Item
 interface DNItem {
@@ -307,14 +308,14 @@ export default function PublicDashboard() {
       minute: '2-digit',
       second: '2-digit',
       hour12: false
-    });
+    }).replace(/\./g, ':');
   };
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('id-ID', {
       weekday: 'long',
       year: 'numeric',
-      month: 'long',
+      month: 'short',
       day: 'numeric'
     });
   };
@@ -337,41 +338,20 @@ export default function PublicDashboard() {
       string,
       {
         label: string;
-        className: string;
+        color: "primary" | "success" | "error" | "warning" | "info" | "light" | "dark";
       }
     > = {
-      advance: {
-        label: "Advance",
-        className:
-          "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-      },
-      on_time: {
-        label: "On time",
-        className:
-          "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-      },
-      ontime: {
-        label: "On time",
-        className:
-          "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-      },
-      delay: {
-        label: "Delay",
-        className:
-          "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-      },
-      pending: {
-        label: "Pending",
-        className:
-          "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-      },
+      advance: { label: "Advance", color: "info" },
+      on_time: { label: "On time", color: "success" },
+      ontime: { label: "On time", color: "success" },
+      delay: { label: "Delay", color: "error" },
+      pending: { label: "Pending", color: "warning" },
     };
 
     return (
       badgeMap[normalized] || {
         label: formatFallbackLabel(status),
-        className:
-          "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
+        color: "light",
       }
     );
   };
@@ -463,11 +443,9 @@ export default function PublicDashboard() {
         }
 
         return (
-          <span
-            className={`px-2.5 py-1 text-xs font-medium rounded-full ${badge.className}`}
-          >
+          <Badge variant="light" color={badge.color}>
             {badge.label}
-          </span>
+          </Badge>
         );
       }
     },
@@ -527,16 +505,16 @@ export default function PublicDashboard() {
       sortable: true,
       group: "Status",
       render: (value) => {
-        const statusColors: Record<string, string> = {
-          "Completed": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-          "In Progress": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-          "Pending": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+        const statusColors: Record<string, "success" | "info" | "warning"> = {
+          "Completed": "success",
+          "In Progress": "info",
+          "Pending": "warning",
         };
 
         return (
-          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors[value] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"}`}>
+          <Badge variant="light" color={statusColors[value as keyof typeof statusColors] || "light"}>
             {value}
-          </span>
+          </Badge>
         );
       }
     },
@@ -546,19 +524,19 @@ export default function PublicDashboard() {
       sortable: true,
       group: "Status",
       render: (value) => {
-        const statusColors: Record<string, string> = {
-          "Pending": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-          "On Commitment": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-          "Incomplete Qty": "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
-          "Outstanding DN": "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
-          "Delay": "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-          "No Show": "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
+        const statusColors: Record<string, "warning" | "success" | "error" | "primary" | "light"> = {
+          "Pending": "warning",
+          "On Commitment": "success",
+          "Incomplete Qty": "warning",
+          "Outstanding DN": "primary",
+          "Delay": "error",
+          "No Show": "light",
         };
 
         return (
-          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors[value] || "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"}`}>
+          <Badge variant="light" color={statusColors[value as keyof typeof statusColors] || "light"}>
             {value}
-          </span>
+          </Badge>
         );
       }
     },
@@ -597,7 +575,7 @@ export default function PublicDashboard() {
       )}
 
       {/* Header with Date and Time */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
         <div className="w-full max-w-[98%] 2xl:max-w-[95%] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
@@ -608,14 +586,18 @@ export default function PublicDashboard() {
                 Real-time arrival tracking and monitoring
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                <Calendar className="w-5 h-5" />
-                <span className="text-lg font-semibold">{formatDate(currentTime)}</span>
+            <div className="flex items-center gap-6 text-right">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                <span className="text-lg font-semibold text-gray-900 dark:text-white leading-none">
+                  {formatDate(currentTime)}
+                </span>
               </div>
-              <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                <Clock className="w-5 h-5" />
-                <span className="text-2xl font-bold">{formatTime(currentTime)}</span>
+              <div className="flex items-center gap-2 min-w-[100px]">
+                <Clock className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                <span className="text-2xl font-bold tabular-nums text-gray-900 dark:text-white leading-none">
+                  {formatTime(currentTime)}
+                </span>
               </div>
             </div>
           </div>

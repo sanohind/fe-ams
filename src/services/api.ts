@@ -314,8 +314,13 @@ class ApiService {
   }
 
   // Arrival Management API (backend: /arrival-manage)
-  async getArrivalManageList() {
-    return this.request('/arrival-manage');
+  async getArrivalManageList(params?: { page?: number; per_page?: number; all?: boolean }) {
+    const query = new URLSearchParams();
+    if (params?.page) query.append('page', params.page.toString());
+    if (params?.per_page) query.append('per_page', params.per_page.toString());
+    if (params?.all) query.append('all', 'true');
+    const qs = query.toString();
+    return this.request(`/arrival-manage${qs ? `?${qs}` : ''}`);
   }
 
   async getArrivalScheduleForCalendar(params?: {
@@ -325,6 +330,7 @@ class ApiService {
     const queryParams = new URLSearchParams();
     if (params?.start) queryParams.append('start', params.start);
     if (params?.end) queryParams.append('end', params.end);
+    queryParams.append('all', 'true'); // Bypass pagination for calendar events
     const qs = queryParams.toString();
     return this.request(`/arrival-manage${qs ? `?${qs}` : ''}`);
   }
@@ -341,9 +347,11 @@ class ApiService {
     return this.request(`/arrival-manage/available-arrivals${qs ? `?${qs}` : ''}`);
   }
 
-  async getArrivalManageTransactions(params: { bp_code: string }) {
+  async getArrivalManageTransactions(params: { bp_code: string; page?: number; per_page?: number }) {
     const query = new URLSearchParams();
     query.append('bp_code', params.bp_code);
+    if (params.page) query.append('page', params.page.toString());
+    if (params.per_page) query.append('per_page', params.per_page.toString());
     return this.request(`/arrival-manage/arrival-transactions?${query.toString()}`);
   }
 
@@ -611,9 +619,13 @@ class ApiService {
   }
 
   // Supplier Contacts
-  async getSupplierContacts(search?: string) {
-    const query = search ? `?search=${encodeURIComponent(search)}` : '';
-    return this.request(`/supplier-contacts${query}`);
+  async getSupplierContacts(params?: { search?: string; page?: number; per_page?: number }) {
+    const query = new URLSearchParams();
+    if (params?.search) query.append('search', params.search);
+    if (params?.page) query.append('page', params.page.toString());
+    if (params?.per_page) query.append('per_page', params.per_page.toString());
+    const qs = query.toString();
+    return this.request(`/supplier-contacts${qs ? `?${qs}` : ''}`);
   }
 
   // Daily Report API
@@ -792,6 +804,70 @@ class ApiService {
     return this.request('/delivery-performance/calculate', {
       method: 'POST',
       body: JSON.stringify({ month, year }),
+    });
+  }
+
+  // PO Receipt API
+  async getPoReceipts(params?: {
+    search?: string;
+    bp_name?: string;
+    buyer?: string;
+    po_no?: string;
+    po_line?: string;
+    desc?: string;
+    order_qty?: string;
+    receipt_qty?: string;
+    pickup_pic?: string;
+    pickup_status?: 'all' | 'pending' | 'picked_up';
+    sort_by?: string;
+    sort_dir?: 'asc' | 'desc';
+    page?: number;
+    per_page?: number;
+  }) {
+    const query = new URLSearchParams();
+    if (params?.search) query.append('search', params.search);
+    if (params?.bp_name) query.append('bp_name', params.bp_name);
+    if (params?.buyer) query.append('buyer', params.buyer);
+    if (params?.po_no) query.append('po_no', params.po_no);
+    if (params?.po_line) query.append('po_line', params.po_line);
+    if (params?.desc) query.append('desc', params.desc);
+    if (params?.order_qty) query.append('order_qty', params.order_qty);
+    if (params?.receipt_qty) query.append('receipt_qty', params.receipt_qty);
+    if (params?.pickup_pic) query.append('pickup_pic', params.pickup_pic);
+    if (params?.pickup_status) query.append('pickup_status', params.pickup_status);
+    if (params?.sort_by) query.append('sort_by', params.sort_by);
+    if (params?.sort_dir) query.append('sort_dir', params.sort_dir);
+    if (params?.page) query.append('page', params.page.toString());
+    if (params?.per_page) query.append('per_page', params.per_page.toString());
+    const qs = query.toString();
+    return this.request(`/po-receipt${qs ? `?${qs}` : ''}`);
+  }
+
+  async pickPoReceipt(id: number, data: { pickup_name: string; pickup_dept: string }) {
+    return this.request(`/po-receipt/${id}/pick`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async pickPoReceiptBulk(data: { ids: number[]; pickup_name: string; pickup_dept: string }) {
+    return this.request('/po-receipt/pick-bulk', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getPoReceiptsByIds(ids: number[]) {
+    return this.request('/po-receipt/by-ids', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    });
+  }
+
+  async printPoReceipt(ids: number[]) {
+    return this.request('/po-receipt/print-receipt', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
     });
   }
 }

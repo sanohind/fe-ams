@@ -8,6 +8,7 @@ import apiService from "../../services/api";
 import { useToast } from "../../hooks/useToast";
 import Select from "../../components/form/Select";
 import Button from "../../components/ui/button/Button";
+import Badge from "../../components/ui/badge/Badge";
 
 interface PerformanceData {
   id: number;
@@ -218,18 +219,18 @@ const DeliveryPerformance = () => {
     }
   };
 
-  const getGradeColor = (grade: string) => {
+  const getGradeColor = (grade: string): "success" | "info" | "warning" | "error" | "light" => {
     switch (grade) {
       case "A":
-        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+        return "success";
       case "B":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+        return "info";
       case "C":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+        return "warning";
       case "D":
-        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+        return "error";
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400";
+        return "light";
     }
   };
 
@@ -293,9 +294,9 @@ const DeliveryPerformance = () => {
       group: monthNames[month - 1],
       sortable: true,
       render: (value: string) => (
-        <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${getGradeColor(value)}`}>
+        <Badge variant="light" color={getGradeColor(value)}>
           {value}
-        </span>
+        </Badge>
       ),
     },
     {
@@ -322,9 +323,9 @@ const DeliveryPerformance = () => {
       group: `Cumulative ${monthNames[month - 1]}`,
       sortable: true,
       render: (value: string | undefined) => (
-        <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${getGradeColor(value || "")}`}>
+        <Badge variant="light" color={getGradeColor(value || "")}>
           {value || "-"}
-        </span>
+        </Badge>
       ),
     },
     {
@@ -484,9 +485,9 @@ const DeliveryPerformance = () => {
                   <div className="space-y-3">
                     {Object.entries(levelDistribution).map(([level, count]) => (
                       <div key={level} className="flex justify-between items-center py-2">
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getGradeColor(level)}`}>
+                        <Badge variant="light" color={getGradeColor(level)}>
                           Level {level}
-                        </span>
+                        </Badge>
                         <span className="font-semibold text-gray-900 dark:text-white">{count}</span>
                       </div>
                     ))}
@@ -509,9 +510,9 @@ const DeliveryPerformance = () => {
                   <div className="space-y-3">
                     {Object.entries(cumulativeLevelDistribution).map(([level, count]) => (
                       <div key={level} className="flex justify-between items-center py-2">
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getGradeColor(level)}`}>
+                        <Badge variant="light" color={getGradeColor(level)}>
                           Level {level}
-                        </span>
+                        </Badge>
                         <span className="font-semibold text-gray-900 dark:text-white">{count}</span>
                       </div>
                     ))}
@@ -545,9 +546,9 @@ const DeliveryPerformance = () => {
                       </div>
                       <div className="text-right">
                         <div className="text-gray-500 text-sm dark:text-gray-400 font-medium">{performer.final_score}</div>
-                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getGradeColor(performer.performance_grade)}`}>
+                        <Badge variant="light" color={getGradeColor(performer.performance_grade)}>
                           {performer.performance_grade}
-                        </span>
+                        </Badge>
                       </div>
                     </div>
                   ))
@@ -575,9 +576,9 @@ const DeliveryPerformance = () => {
                       </div>
                       <div className="text-right">
                         <div className="text-gray-500 text-sm dark:text-gray-400 font-medium">{performer.final_score}</div>
-                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getGradeColor(performer.performance_grade)}`}>
+                        <Badge variant="light" color={getGradeColor(performer.performance_grade)}>
                           {performer.performance_grade}
-                        </span>
+                        </Badge>
                       </div>
                     </div>
                   ))
@@ -610,9 +611,9 @@ const DeliveryPerformance = () => {
                       </div>
                       <div className="text-right">
                         <div className="text-gray-500 text-sm dark:text-gray-400 font-medium">{performer.final_score}</div>
-                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getGradeColor(performer.performance_grade)}`}>
+                        <Badge variant="light" color={getGradeColor(performer.performance_grade)}>
                           {performer.performance_grade}
-                        </span>
+                        </Badge>
                       </div>
                     </div>
                   ))
@@ -640,9 +641,9 @@ const DeliveryPerformance = () => {
                       </div>
                       <div className="text-right">
                         <div className="text-gray-500 text-sm dark:text-gray-400 font-medium">{performer.final_score}</div>
-                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getGradeColor(performer.performance_grade)}`}>
+                        <Badge variant="light" color={getGradeColor(performer.performance_grade)}>
                           {performer.performance_grade}
-                        </span>
+                        </Badge>
                       </div>
                     </div>
                   ))
