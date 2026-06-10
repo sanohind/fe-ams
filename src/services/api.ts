@@ -819,6 +819,7 @@ class ApiService {
     receipt_qty?: string;
     pickup_pic?: string;
     pickup_status?: 'all' | 'pending' | 'picked_up';
+    date_filter?: 'all' | 'recent_week' | 'recent_month' | 'recent_year';
     sort_by?: string;
     sort_dir?: 'asc' | 'desc';
     page?: number;
@@ -835,6 +836,7 @@ class ApiService {
     if (params?.receipt_qty) query.append('receipt_qty', params.receipt_qty);
     if (params?.pickup_pic) query.append('pickup_pic', params.pickup_pic);
     if (params?.pickup_status) query.append('pickup_status', params.pickup_status);
+    if (params?.date_filter) query.append('date_filter', params.date_filter);
     if (params?.sort_by) query.append('sort_by', params.sort_by);
     if (params?.sort_dir) query.append('sort_dir', params.sort_dir);
     if (params?.page) query.append('page', params.page.toString());

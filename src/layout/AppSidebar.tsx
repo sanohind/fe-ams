@@ -80,7 +80,7 @@ const mainPageItems: NavItem[] = [
   },
   {
     icon: <Receipt size={20} />,
-    name: "PO Receipt Monitor",
+    name: "PO Processing",
     path: "/po-receipt",
     requiredRoles: ['leader', 'superadmin'],
   },

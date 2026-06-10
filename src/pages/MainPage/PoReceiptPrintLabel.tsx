@@ -28,38 +28,44 @@ Font.register({
 // ─── Thermal Paper Constants ────────────────────────────────────────────────
 // 1mm = 2.8346pt
 const MM_TO_PT = 2.8346;
-const PAPER_WIDTH_MM  = 80;
-const PAPER_WIDTH_PT  = PAPER_WIDTH_MM * MM_TO_PT; // ≈226.77pt
+const PAPER_WIDTH_MM = 80;
+const PAPER_WIDTH_PT = PAPER_WIDTH_MM * MM_TO_PT; // ≈226.77pt
 
-// Each label height estimation (for total page height calculation):
-// 5 rows × ~18pt + borders + padding ≈ 120pt
-const LABEL_HEIGHT_PT    = 120;
-const PAGE_PADDING_PT    =  10;
-const LABEL_GAP_PT       =   6;
+// Each label height estimation: header row + 4 data rows + padding
+// header ~10pt + 4 rows × ~12pt + borders + padding ≈ 80pt
+const LABEL_HEIGHT_PT = 65;
+const PAGE_PADDING_PT = 10;
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   page: {
     paddingHorizontal: 6,
     paddingVertical: PAGE_PADDING_PT,
-    fontSize: 8,
+    fontSize: 6,
     fontFamily: "Poppins",
     backgroundColor: "#fff",
     width: PAPER_WIDTH_PT,
   },
-  // Each label takes full width; a thin separator line below
+  // Each label takes full width
   labelCard: {
     width: "100%",
-    marginBottom: LABEL_GAP_PT,
-  },
-  separator: {
-    borderBottom: "0.75pt dashed #aaa",
-    marginBottom: LABEL_GAP_PT,
   },
   table: {
     border: "0.75pt solid #000",
     width: "100%",
   },
+  // Header row: QCC text left, Rec Date right (no border)
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 3,
+    paddingBottom: 2,
+  },
+  headerText: {
+    fontSize: 5,
+  },
+  // Data rows
   row: {
     flexDirection: "row",
     borderBottom: "0.75pt solid #000",
@@ -68,37 +74,53 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   labelCell: {
-    width: "38%",
+    width: "22%",
     borderRight: "0.75pt solid #000",
-    padding: "3 5",
+    padding: "1.5 5",
     justifyContent: "center",
   },
   valueCell: {
     flex: 1,
-    padding: "3 5",
+    padding: "1.5 5",
+    justifyContent: "center",
+  },
+  valueCellBordered: {
+    flex: 1.5,
+    borderRight: "0.75pt solid #000",
+    padding: "1.5 5",
+    justifyContent: "center",
+  },
+  labelCellSmall: {
+    width: "20%",
+    borderRight: "0.75pt solid #000",
+    padding: "1.5 5",
     justifyContent: "center",
   },
   labelText: {
-    fontSize: 8,
+    fontSize: 6,
     fontWeight: "bold",
   },
   valueText: {
-    fontSize: 8,
+    fontSize: 6,
   },
 });
 
 // ─── Interfaces ────────────────────────────────────────────────────────────────
 interface LabelItem {
   po_no: string;
-  effective_receipt_date: string;
+  supplier: string;
+  part_name: string;
   buyer: string;
   received_by: string;
   printed_date: string;
+  effective_receipt_date: string;
 }
 
 interface RawLabelItem {
   id: number;
   po_no: string;
+  bp_name: string | null;
+  desc: string | null;
   buyer: string | null;
   receipt_date_erp: string | null;
   receipt_date_local: string | null;
@@ -118,25 +140,38 @@ function formatDateForLabel(isoString: string | null): string {
   return `${day}/${month}/${year} ${hh}.${mm}`;
 }
 
+/** Format only the date part (no time) for the corner header */
+function formatDateOnly(isoString: string | null): string {
+  if (!isoString) return "-";
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return "-";
+  const day   = d.getDate();
+  const month = d.getMonth() + 1;
+  const year  = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
 // ─── PDF Document ─────────────────────────────────────────────────────────────
-// Single continuous thermal-roll page: 80mm wide × computed height
+// One page per label
 const LabelDocument = ({ items }: { items: LabelItem[] }) => {
-  // Compute total page height: padding top + bottom + (label + gap) × n − last gap
-  const totalHeight =
-    PAGE_PADDING_PT * 2 +
-    items.length * LABEL_HEIGHT_PT +
-    Math.max(0, items.length - 1) * LABEL_GAP_PT;
+  const pageHeight = LABEL_HEIGHT_PT + PAGE_PADDING_PT * 2;
 
   return (
     <Document title="PO Receipt Labels">
-      <Page
-        style={styles.page}
-        size={[PAPER_WIDTH_PT, totalHeight]}
-      >
-        {items.map((item, idx) => (
-          <View key={idx}>
-            {/* ── Label card ── */}
-            <View style={styles.labelCard}>
+      {items.map((item, idx) => (
+        <Page
+          key={idx}
+          style={styles.page}
+          size={[PAPER_WIDTH_PT, pageHeight]}
+        >
+          {/* ── Label card ── */}
+          <View style={styles.labelCard} wrap={false}>
+              {/* Header: QCC left | Rec. Date right — no border */}
+              <View style={styles.headerRow}>
+                <Text style={styles.headerText}>QCC-Wireless-2026</Text>
+                <Text style={styles.headerText}>Receipt Date: {item.effective_receipt_date}</Text>
+              </View>
+
               <View style={styles.table}>
                 {/* Row 1: PO NO */}
                 <View style={styles.row}>
@@ -144,57 +179,49 @@ const LabelDocument = ({ items }: { items: LabelItem[] }) => {
                     <Text style={styles.labelText}>PO NO</Text>
                   </View>
                   <View style={styles.valueCell}>
-                    <Text style={styles.valueText}>{item.po_no}</Text>
+                    <Text style={styles.valueText} maxLines={1}>{item.po_no}</Text>
                   </View>
                 </View>
 
-                {/* Row 2: RECEIPT DATE */}
+                {/* Row 2: SUPPLIER */}
                 <View style={styles.row}>
                   <View style={styles.labelCell}>
-                    <Text style={styles.labelText}>RECEIPT DATE</Text>
+                    <Text style={styles.labelText}>SUPPLIER</Text>
                   </View>
                   <View style={styles.valueCell}>
-                    <Text style={styles.valueText}>{item.effective_receipt_date}</Text>
+                    <Text style={styles.valueText} maxLines={1}>{item.supplier}</Text>
                   </View>
                 </View>
 
-                {/* Row 3: BUYER */}
+                {/* Row 3: PART NAME */}
                 <View style={styles.row}>
+                  <View style={styles.labelCell}>
+                    <Text style={styles.labelText}>PART NAME</Text>
+                  </View>
+                  <View style={styles.valueCell}>
+                    <Text style={styles.valueText} maxLines={1}>{item.part_name}</Text>
+                  </View>
+                </View>
+
+                {/* Row 4: BUYER & RECEIVED BY (last row) */}
+                <View style={styles.rowLast}>
                   <View style={styles.labelCell}>
                     <Text style={styles.labelText}>BUYER</Text>
                   </View>
-                  <View style={styles.valueCell}>
-                    <Text style={styles.valueText}>{item.buyer}</Text>
+                  <View style={styles.valueCellBordered}>
+                    <Text style={styles.valueText} maxLines={1}>{item.buyer}</Text>
                   </View>
-                </View>
-
-                {/* Row 4: RECEIVED BY */}
-                <View style={styles.row}>
-                  <View style={styles.labelCell}>
+                  <View style={styles.labelCellSmall}>
                     <Text style={styles.labelText}>RECEIVED BY</Text>
                   </View>
                   <View style={styles.valueCell}>
-                    <Text style={styles.valueText}>{item.received_by}</Text>
-                  </View>
-                </View>
-
-                {/* Row 5: PRINTED DATE (no bottom border — last row) */}
-                <View style={styles.rowLast}>
-                  <View style={styles.labelCell}>
-                    <Text style={styles.labelText}>PRINTED DATE</Text>
-                  </View>
-                  <View style={styles.valueCell}>
-                    <Text style={styles.valueText}>{item.printed_date}</Text>
+                    <Text style={styles.valueText} maxLines={1}>{item.received_by}</Text>
                   </View>
                 </View>
               </View>
             </View>
-
-            {/* ── Dashed separator between labels (skip after last) ── */}
-            {idx < items.length - 1 && <View style={styles.separator} />}
-          </View>
-        ))}
-      </Page>
+        </Page>
+      ))}
     </Document>
   );
 };
@@ -222,21 +249,37 @@ export default function PoReceiptPrintLabel() {
         return;
       }
 
-      const printedDate = formatDateForLabel(new Date().toISOString());
-
-      const processed: LabelItem[] = rawItems.map((item) => ({
-        po_no:                  item.po_no ?? "-",
-        effective_receipt_date: formatDateForLabel(item.effective_receipt_date),
-        buyer:                  item.buyer ?? "-",
-        received_by:            receivedBy,
-        printed_date:           printedDate,
-      }));
+      const processed: LabelItem[] = rawItems.map((item) => {
+        const bpName = item.bp_name ?? "-";
+        const desc = item.desc ?? "-";
+        
+        return {
+          po_no:                  item.po_no ?? "-",
+          supplier:               bpName.length > 40 ? bpName.substring(0, 40) + "..." : bpName,
+          part_name:              desc.length > 40 ? desc.substring(0, 40) + "..." : desc,
+          effective_receipt_date: formatDateOnly(item.effective_receipt_date),
+          buyer:                  item.buyer ?? "-",
+          received_by:            receivedBy.length > 14 ? receivedBy.substring(0, 14) + "..." : receivedBy,
+          printed_date:           formatDateForLabel(new Date().toISOString()),
+        };
+      });
 
       setLabelItems(processed);
     } catch {
       setError("Failed to parse label data.");
     }
   }, [dataParam, receivedBy]);
+
+  // ── Inject @page CSS to force portrait orientation ──────────────────────────
+  useEffect(() => {
+    const styleEl = document.createElement("style");
+    styleEl.id = "print-portrait-override";
+    styleEl.textContent = `@page { size: portrait; margin: 0; }`;
+    document.head.appendChild(styleEl);
+    return () => {
+      document.getElementById("print-portrait-override")?.remove();
+    };
+  }, []);
 
   if (error) {
     return (
