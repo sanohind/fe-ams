@@ -179,7 +179,7 @@ const LabelDocument = ({ items }: { items: LabelItem[] }) => {
                     <Text style={styles.labelText}>PO NO</Text>
                   </View>
                   <View style={styles.valueCell}>
-                    <Text style={styles.valueText} maxLines={1}>{item.po_no}</Text>
+                    <Text style={styles.valueText}>{item.po_no}</Text>
                   </View>
                 </View>
 
@@ -189,7 +189,7 @@ const LabelDocument = ({ items }: { items: LabelItem[] }) => {
                     <Text style={styles.labelText}>SUPPLIER</Text>
                   </View>
                   <View style={styles.valueCell}>
-                    <Text style={styles.valueText} maxLines={1}>{item.supplier}</Text>
+                    <Text style={styles.valueText}>{item.supplier}</Text>
                   </View>
                 </View>
 
@@ -199,7 +199,7 @@ const LabelDocument = ({ items }: { items: LabelItem[] }) => {
                     <Text style={styles.labelText}>PART NAME</Text>
                   </View>
                   <View style={styles.valueCell}>
-                    <Text style={styles.valueText} maxLines={1}>{item.part_name}</Text>
+                    <Text style={styles.valueText}>{item.part_name}</Text>
                   </View>
                 </View>
 
@@ -209,13 +209,13 @@ const LabelDocument = ({ items }: { items: LabelItem[] }) => {
                     <Text style={styles.labelText}>BUYER</Text>
                   </View>
                   <View style={styles.valueCellBordered}>
-                    <Text style={styles.valueText} maxLines={1}>{item.buyer}</Text>
+                    <Text style={styles.valueText}>{item.buyer}</Text>
                   </View>
                   <View style={styles.labelCellSmall}>
                     <Text style={styles.labelText}>RECEIVED BY</Text>
                   </View>
                   <View style={styles.valueCell}>
-                    <Text style={styles.valueText} maxLines={1}>{item.received_by}</Text>
+                    <Text style={styles.valueText}>{item.received_by}</Text>
                   </View>
                 </View>
               </View>
